@@ -11,7 +11,6 @@ namespace Oured\MultiTenant\Traits;
 
 use Illuminate\Database\Eloquent\Model;
 use Oured\MultiTenant\Tenancy\TenantContext;
-use Symfony\Component\Console\Input\InputOption;
 
 /**
  * TenantAwareCommand
@@ -35,6 +34,11 @@ use Symfony\Component\Console\Input\InputOption;
  *           return $this->runForAllTenants();
  *       }
  *   }
+ *
+ * @method mixed option(string|null $key = null)
+ * @method void info(string $string, int|string|null $verbosity = null)
+ * @method void error(string $string, int|string|null $verbosity = null)
+ * @method void newLine(int $count = 1)
  */
 trait TenantAwareCommand
 {
@@ -133,7 +137,7 @@ trait TenantAwareCommand
      * Run command for specific tenant or all tenants.
      *
      * @param callable $callback The callback to run
-     * @return int Command exit code
+     * @return int Command exit code (0 = success, 1 = failure)
      */
     protected function runForTenantOrAll(callable $callback): int
     {
@@ -143,19 +147,19 @@ trait TenantAwareCommand
             $tenant = $this->setTenantById($tenantId);
 
             if (! $tenant) {
-                return self::FAILURE;
+                return 1; // FAILURE
             }
 
             try {
                 $callback($tenant);
-                return self::SUCCESS;
+                return 0; // SUCCESS
             } finally {
                 app(TenantContext::class)->clear();
             }
         }
 
         $this->forEachTenant($callback);
-        return self::SUCCESS;
+        return 0; // SUCCESS
     }
 
     /**
