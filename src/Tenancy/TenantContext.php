@@ -66,7 +66,7 @@ class TenantContext
      */
     public function setTenant(?Model $tenant): void
     {
-        $this->tenant   = $tenant;
+        $this->tenant = $tenant;
         $this->resolved = true;
     }
 
@@ -75,7 +75,7 @@ class TenantContext
      */
     public function clear(): void
     {
-        $this->tenant   = null;
+        $this->tenant = null;
         $this->resolved = false;
     }
 
@@ -93,8 +93,6 @@ class TenantContext
     private function resolve(): void
     {
         $this->resolved = true;
-        $this->tenant   = $this->resolver->resolveTenant();
+        $this->tenant = $this->resolver->resolveTenant();
     }
 }
-
-

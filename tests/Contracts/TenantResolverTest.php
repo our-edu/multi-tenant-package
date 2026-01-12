@@ -23,7 +23,7 @@ class TenantResolverTest extends TestCase
 
     public function testTenantResolverCanBeImplemented(): void
     {
-        $resolver = new class implements TenantResolver {
+        $resolver = new class () implements TenantResolver {
             public function resolveTenant(): ?Model
             {
                 return null;
@@ -35,7 +35,7 @@ class TenantResolverTest extends TestCase
 
     public function testTenantResolverReturnsNullForNoTenant(): void
     {
-        $resolver = new class implements TenantResolver {
+        $resolver = new class () implements TenantResolver {
             public function resolveTenant(): ?Model
             {
                 return null;
@@ -51,7 +51,7 @@ class TenantResolverTest extends TestCase
     {
         $tenantModel = Mockery::mock(Model::class);
 
-        $resolver = new class($tenantModel) implements TenantResolver {
+        $resolver = new class ($tenantModel) implements TenantResolver {
             private Model $tenant;
 
             public function __construct(Model $tenant)
@@ -70,4 +70,3 @@ class TenantResolverTest extends TestCase
         $this->assertSame($tenantModel, $result);
     }
 }
-

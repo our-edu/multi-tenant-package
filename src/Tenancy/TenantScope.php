@@ -42,7 +42,7 @@ class TenantScope implements Scope
 
         $column = $this->getTenantColumn($model);
 
-        $builder->where($builder->getModel()->getTable().'.'.$column, $tenantId);
+        $builder->where($builder->getModel()->getTable() . '.' . $column, $tenantId);
     }
 
     /**
@@ -50,10 +50,10 @@ class TenantScope implements Scope
      */
     public function forTenant(Builder $builder, string $tenantId): Builder
     {
-        $model  = $builder->getModel();
+        $model = $builder->getModel();
         $column = $this->getTenantColumn($model);
 
-        return $builder->where($model->getTable().'.'.$column, $tenantId);
+        return $builder->where($model->getTable() . '.' . $column, $tenantId);
     }
 
     private function getTenantColumn(Model $model): string
@@ -67,5 +67,3 @@ class TenantScope implements Scope
         return 'tenant_id';
     }
 }
-
-

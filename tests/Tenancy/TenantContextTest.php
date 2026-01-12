@@ -19,6 +19,7 @@ use Tests\TestCase;
 class TenantContextTest extends TestCase
 {
     private TenantContext $context;
+
     private TenantResolver|MockInterface $resolver;
 
     protected function setUp(): void
@@ -182,4 +183,3 @@ class TenantContextTest extends TestCase
         return $mock;
     }
 }
-

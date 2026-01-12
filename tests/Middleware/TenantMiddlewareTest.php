@@ -19,6 +19,7 @@ use Tests\TestCase;
 class TenantMiddlewareTest extends TestCase
 {
     private TenantMiddleware $middleware;
+
     private TenantContext|MockInterface $context;
 
     protected function setUp(): void
@@ -55,6 +56,7 @@ class TenantMiddlewareTest extends TestCase
 
         $next = function ($req) use (&$called) {
             $called = true;
+
             return 'next_response';
         };
 
@@ -85,4 +87,3 @@ class TenantMiddlewareTest extends TestCase
         $this->assertEquals('response', $response);
     }
 }
-

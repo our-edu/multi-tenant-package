@@ -7,8 +7,25 @@ on:
     branches: [ main, develop ]
 
 jobs:
+  code-style:
+    name: Code Style (PSR-12)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: php-cs-fixer
+
+      - name: Check code style
+        run: php-cs-fixer fix --dry-run --diff --config=.php-cs-fixer.php
+
   test:
     runs-on: ubuntu-latest
+    needs: code-style
 
     strategy:
       matrix:

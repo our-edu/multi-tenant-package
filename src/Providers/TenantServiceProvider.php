@@ -18,7 +18,7 @@ class TenantServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->mergeConfigFrom(__DIR__.'/../../config/multi-tenant.php', 'multi-tenant');
+        $this->mergeConfigFrom(__DIR__ . '/../../config/multi-tenant.php', 'multi-tenant');
 
         $this->app->singleton(TenantContext::class, function (Application $app): TenantContext {
             /** @var TenantResolver $resolver */
@@ -59,5 +59,3 @@ class TenantServiceProvider extends ServiceProvider
         return dirname(__DIR__, 2) . '/config/multi-tenant.php';
     }
 }
-
-

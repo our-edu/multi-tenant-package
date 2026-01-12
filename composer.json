@@ -33,7 +33,8 @@
     "require-dev": {
         "phpunit/phpunit": "^10.0",
         "orchestra/testbench": "^8.0|^9.0",
-        "mockery/mockery": "^1.5"
+        "mockery/mockery": "^1.5",
+        "friendsofphp/php-cs-fixer": "^3.0"
     },
     "autoload": {
         "psr-4": {
@@ -47,7 +48,9 @@
     },
     "scripts": {
         "test": "phpunit",
-        "test:coverage": "phpunit --coverage-html=coverage"
+        "test:coverage": "phpunit --coverage-html=coverage",
+        "lint": "php-cs-fixer fix --dry-run --diff",
+        "lint:fix": "php-cs-fixer fix"
     },
     "extra": {
         "laravel": {
@@ -59,5 +62,3 @@
     "minimum-stability": "stable",
     "prefer-stable": true
 }
-
-
