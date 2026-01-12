@@ -1,5 +1,7 @@
 # multi-tenant
 
+> © 2026 OurEdu - Reusable multi-tenant infrastructure for OurEdu Laravel services.
+
 Reusable multi-tenant infrastructure for OurEdu Laravel services.
 
 This package extracts the **tenant context**, **global tenant scope**, **model trait**, and **middleware** into a single Composer package that can be installed in any service.
