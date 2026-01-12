@@ -9,29 +9,56 @@ declare(strict_types=1);
 
 namespace Tests;
 
-use Illuminate\Container\Container;
-use PHPUnit\Framework\TestCase as PHPUnitTestCase;
+use Illuminate\Database\Eloquent\Model;
+use Mockery;
+use Orchestra\Testbench\TestCase as OrchestraTestCase;
+use Oured\MultiTenant\Contracts\TenantResolver;
+use Oured\MultiTenant\Providers\TenantServiceProvider;
 
 /**
  * Base TestCase for all multi-tenant package tests
  */
-abstract class TestCase extends PHPUnitTestCase
+abstract class TestCase extends OrchestraTestCase
 {
-    protected Container $app;
-
     protected function setUp(): void
     {
         parent::setUp();
-
-        $this->app = new Container();
-        Container::setInstance($this->app);
     }
 
     protected function tearDown(): void
     {
-        Container::setInstance(null);
-
+        Mockery::close();
         parent::tearDown();
+    }
+
+    /**
+     * Get package providers.
+     */
+    protected function getPackageProviders($app): array
+    {
+        return [
+            TenantServiceProvider::class,
+        ];
+    }
+
+    /**
+     * Define environment setup.
+     */
+    protected function defineEnvironment($app): void
+    {
+        // Setup default config
+        $app['config']->set('multi-tenant.tenant_model', 'App\\Models\\Tenant');
+        $app['config']->set('multi-tenant.tenant_column', 'tenant_id');
+
+        // Bind a default resolver that returns null
+        $app->bind(TenantResolver::class, function () {
+            return new class implements TenantResolver {
+                public function resolveTenant(): ?Model
+                {
+                    return null;
+                }
+            };
+        });
     }
 }
 
