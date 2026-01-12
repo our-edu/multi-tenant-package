@@ -7,13 +7,13 @@ declare(strict_types=1);
  * Multi-Tenant Infrastructure for Laravel Services
  */
 
-namespace Oured\MultiTenant\Traits;
+namespace Ouredu\MultiTenant\Traits;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Oured\MultiTenant\Tenancy\TenantContext;
-use Oured\MultiTenant\Tenancy\TenantScope;
+use Ouredu\MultiTenant\Tenancy\TenantContext;
+use Ouredu\MultiTenant\Tenancy\TenantScope;
 
 /**
  * HasTenant

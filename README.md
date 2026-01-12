@@ -39,7 +39,7 @@ composer update ouredu/multi-tenant
 ### 2. Publish config (optional)
 
 ```bash
-php artisan vendor:publish --provider=\"Oured\\MultiTenant\\Providers\\TenantServiceProvider\" --tag=config
+php artisan vendor:publish --provider=\"Ouredu\\MultiTenant\\Providers\\TenantServiceProvider\" --tag=config
 ```
 
 This will create `config/multi-tenant.php` in your service.
@@ -50,7 +50,7 @@ This will create `config/multi-tenant.php` in your service.
 
 ### TenantContext
 
-`Oured\MultiTenant\Tenancy\TenantContext`
+`Ouredu\MultiTenant\Tenancy\TenantContext`
 
 - Caches the current tenant model for the current request / job / command.
 - Provides:
@@ -64,14 +64,14 @@ It **does not** know how to resolve the tenant by itself — it delegates that t
 
 ### TenantResolver (you implement this)
 
-`Oured\MultiTenant\Contracts\TenantResolver`
+`Ouredu\MultiTenant\Contracts\TenantResolver`
 
 You must bind an implementation in your service, for example in a service provider:
 
 ```php
 use Illuminate\Support\ServiceProvider;
-use Oured\MultiTenant\Contracts\TenantResolver;
-use Oured\MultiTenant\Tenancy\TenantContext;
+use Ouredu\MultiTenant\Contracts\TenantResolver;
+use Ouredu\MultiTenant\Tenancy\TenantContext;
 
 class AppTenantServiceProvider extends ServiceProvider
 {
@@ -107,7 +107,7 @@ In any model that should be tenant-scoped:
 
 ```php
 use Illuminate\Database\Eloquent\Model;
-use Oured\MultiTenant\Traits\HasTenant;
+use Ouredu\MultiTenant\Traits\HasTenant;
 
 class Payment extends Model
 {
@@ -132,7 +132,7 @@ Features:
 
 ## Middleware
 
-`Oured\MultiTenant\Middleware\TenantMiddleware`
+`Ouredu\MultiTenant\Middleware\TenantMiddleware`
 
 Register it in your kernel (or via attributes) and use it on routes that should have tenant context:
 
@@ -140,7 +140,7 @@ Register it in your kernel (or via attributes) and use it on routes that should 
 // In HttpKernel.php
 protected $middlewareAliases = [
     // ...
-    'tenant' => \Oured\MultiTenant\Middleware\TenantMiddleware::class,
+    'tenant' => \Ouredu\MultiTenant\Middleware\TenantMiddleware::class,
 ];
 
 // In routes/api.php

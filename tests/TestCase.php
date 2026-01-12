@@ -12,8 +12,8 @@ namespace Tests;
 use Illuminate\Database\Eloquent\Model;
 use Mockery;
 use Orchestra\Testbench\TestCase as OrchestraTestCase;
-use Oured\MultiTenant\Contracts\TenantResolver;
-use Oured\MultiTenant\Providers\TenantServiceProvider;
+use Ouredu\MultiTenant\Contracts\TenantResolver;
+use Ouredu\MultiTenant\Providers\TenantServiceProvider;
 
 /**
  * Base TestCase for all multi-tenant package tests

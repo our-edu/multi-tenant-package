@@ -13,8 +13,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Mockery;
 use Mockery\MockInterface;
-use Oured\MultiTenant\Tenancy\TenantContext;
-use Oured\MultiTenant\Traits\HasTenant;
+use Ouredu\MultiTenant\Tenancy\TenantContext;
+use Ouredu\MultiTenant\Traits\HasTenant;
 use Tests\TestCase;
 
 class HasTenantTest extends TestCase

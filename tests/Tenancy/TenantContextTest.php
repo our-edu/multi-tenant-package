@@ -12,8 +12,8 @@ namespace Tests\Tenancy;
 use Illuminate\Database\Eloquent\Model;
 use Mockery;
 use Mockery\MockInterface;
-use Oured\MultiTenant\Contracts\TenantResolver;
-use Oured\MultiTenant\Tenancy\TenantContext;
+use Ouredu\MultiTenant\Contracts\TenantResolver;
+use Ouredu\MultiTenant\Tenancy\TenantContext;
 use Tests\TestCase;
 
 class TenantContextTest extends TestCase
