@@ -30,9 +30,33 @@ class TenantServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        $this->publishes([
-            __DIR__.'/../../config/multi-tenant.php' => config_path('multi-tenant.php'),
-        ], 'config');
+        $configPath = $this->configPath();
+        $publishPath = $this->app->configPath('multi-tenant.php');
+
+        // Auto-publish config if it doesn't exist
+        if (! file_exists($publishPath) && file_exists($configPath)) {
+            $this->publishes([
+                $configPath => $publishPath,
+            ], 'config');
+
+            // Auto-copy the config file
+            if (! $this->app->configurationIsCached()) {
+                copy($configPath, $publishPath);
+            }
+        } else {
+            // Still register for manual publishing
+            $this->publishes([
+                $configPath => $publishPath,
+            ], 'config');
+        }
+    }
+
+    /**
+     * Get the config file path.
+     */
+    protected function configPath(): string
+    {
+        return dirname(__DIR__, 2) . '/config/multi-tenant.php';
     }
 }
 
