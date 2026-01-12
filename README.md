@@ -153,6 +153,133 @@ The middleware just triggers `TenantContext::getTenant()` early; the real logic 
 
 ---
 
+## Jobs & Queues
+
+For queued jobs, use the `TenantAwareJob` trait and `SetTenantForJob` middleware:
+
+```php
+use Oured\MultiTenant\Traits\TenantAwareJob;
+use Oured\MultiTenant\Middleware\SetTenantForJob;
+
+class ProcessPayment implements ShouldQueue
+{
+    use TenantAwareJob;
+
+    public function __construct(public string $paymentId)
+    {
+        $this->captureTenantContext(); // Captures current tenant
+    }
+
+    public function middleware(): array
+    {
+        return [new SetTenantForJob()];
+    }
+
+    public function handle(): void
+    {
+        // Tenant context is automatically set
+        $payment = Payment::find($this->paymentId);
+    }
+}
+
+// Dispatch - tenant is captured automatically
+ProcessPayment::dispatch($paymentId);
+
+// Or dispatch for specific tenant
+ProcessPayment::dispatch($paymentId)->forTenant($tenantId);
+```
+
+---
+
+## Artisan Commands
+
+For commands, use the `TenantAwareCommand` trait:
+
+```php
+use Oured\MultiTenant\Traits\TenantAwareCommand;
+
+class ProcessReports extends Command
+{
+    use TenantAwareCommand;
+
+    protected $signature = 'reports:process {--tenant= : Tenant ID}';
+
+    public function handle(): int
+    {
+        return $this->runForTenantOrAll(function ($tenant) {
+            // Process reports - queries are scoped
+            $reports = Report::all();
+        });
+    }
+}
+
+// Run for specific tenant
+php artisan reports:process --tenant=uuid-here
+
+// Run for all tenants
+php artisan reports:process
+```
+
+---
+
+## Message Broker Integration
+
+For publishing/consuming messages with tenant context:
+
+```php
+use Oured\MultiTenant\Messages\TenantMessage;
+
+// Publishing (captures current tenant)
+$message = TenantMessage::create('payment.created', ['id' => 123]);
+$broker->publish($message->toJson());
+
+// Publishing for specific tenant
+$message = TenantMessage::forTenant($tenantId, 'payment.created', ['id' => 123]);
+
+// Consuming
+$message = TenantMessage::fromJson($rawMessage);
+$context->setTenantById($message->tenantId);
+// Process message...
+$context->clear();
+```
+
+---
+
+## Advanced Context Methods
+
+```php
+// Set tenant by ID
+$context->setTenantById($tenantId);
+
+// Run callback with specific tenant
+$context->runWithTenant($tenant, function ($tenant) {
+    // All queries scoped to $tenant
+});
+
+// Run callback with tenant ID
+$context->runWithTenantId($tenantId, function ($tenant) {
+    // All queries scoped to $tenant
+});
+```
+
+---
+
+## Handling Different Contexts
+
+| Context | Solution |
+|---------|----------|
+| Authenticated HTTP | Session/Auth resolver |
+| Public Routes | Domain/Header resolver |
+| Queued Jobs | `TenantAwareJob` trait |
+| Commands | `TenantAwareCommand` trait |
+| Webhooks | URL parameter or payload |
+| Message Broker | `TenantMessage` class |
+| Tests | `$context->setTenant($tenant)` |
+
+See [docs/TENANT_RESOLUTION_STRATEGIES.md](docs/TENANT_RESOLUTION_STRATEGIES.md) for detailed examples.
+
+---
+
 ## Configuration
 
 `config/multi-tenant.php`:
