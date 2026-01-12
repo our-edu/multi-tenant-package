@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace Tests\Middleware;
 
-use Closure;
 use Illuminate\Http\Request;
 use Mockery;
+use Mockery\MockInterface;
 use Oured\MultiTenant\Middleware\TenantMiddleware;
 use Oured\MultiTenant\Tenancy\TenantContext;
 use Tests\TestCase;
@@ -19,22 +19,16 @@ use Tests\TestCase;
 class TenantMiddlewareTest extends TestCase
 {
     private TenantMiddleware $middleware;
-    private TenantContext $context;
+    private TenantContext|MockInterface $context;
 
     protected function setUp(): void
     {
         parent::setUp();
 
         $this->context = Mockery::mock(TenantContext::class);
-        $this->app->bind(TenantContext::class, fn () => $this->context);
+        $this->app->instance(TenantContext::class, $this->context);
 
         $this->middleware = new TenantMiddleware();
-    }
-
-    protected function tearDown(): void
-    {
-        parent::tearDown();
-        Mockery::close();
     }
 
     public function testMiddlewareResolvesTenantonHandle(): void
@@ -81,14 +75,14 @@ class TenantMiddlewareTest extends TestCase
             return 'response';
         };
 
-        // Verify getTenant is called to trigger lazy loading
         $this->context
             ->shouldReceive('getTenant')
-            ->once();
+            ->once()
+            ->andReturnNull();
 
-        $this->middleware->handle($request, $next);
+        $response = $this->middleware->handle($request, $next);
 
-        $this->context->shouldHaveReceived('getTenant')->once();
+        $this->assertEquals('response', $response);
     }
 }
 
