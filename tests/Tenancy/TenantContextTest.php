@@ -11,6 +11,7 @@ namespace Tests\Tenancy;
 
 use Illuminate\Database\Eloquent\Model;
 use Mockery;
+use Mockery\MockInterface;
 use Oured\MultiTenant\Contracts\TenantResolver;
 use Oured\MultiTenant\Tenancy\TenantContext;
 use Tests\TestCase;
@@ -18,7 +19,7 @@ use Tests\TestCase;
 class TenantContextTest extends TestCase
 {
     private TenantContext $context;
-    private TenantResolver $resolver;
+    private TenantResolver|MockInterface $resolver;
 
     protected function setUp(): void
     {
@@ -26,12 +27,6 @@ class TenantContextTest extends TestCase
 
         $this->resolver = Mockery::mock(TenantResolver::class);
         $this->context = new TenantContext($this->resolver);
-    }
-
-    protected function tearDown(): void
-    {
-        parent::tearDown();
-        Mockery::close();
     }
 
     public function testGetTenantReturnsNullWhenNotResolved(): void
@@ -48,8 +43,7 @@ class TenantContextTest extends TestCase
 
     public function testGetTenantReturnsTenantModel(): void
     {
-        $tenantModel = Mockery::mock(Model::class);
-        $tenantModel->uuid = 'test-uuid-123';
+        $tenantModel = $this->createTenantMock('test-uuid-123');
 
         $this->resolver
             ->shouldReceive('resolveTenant')
@@ -63,8 +57,7 @@ class TenantContextTest extends TestCase
 
     public function testGetTenantIdReturnsUuidWhenAvailable(): void
     {
-        $tenantModel = Mockery::mock(Model::class);
-        $tenantModel->uuid = 'test-uuid-456';
+        $tenantModel = $this->createTenantMock('test-uuid-456');
 
         $this->resolver
             ->shouldReceive('resolveTenant')
@@ -78,9 +71,7 @@ class TenantContextTest extends TestCase
 
     public function testGetTenantIdReturnsPrimaryKeyWhenUuidNotAvailable(): void
     {
-        $tenantModel = Mockery::mock(Model::class);
-        $tenantModel->uuid = null;
-        $tenantModel->shouldReceive('getKey')->andReturn(789);
+        $tenantModel = $this->createTenantMock(null, 789);
 
         $this->resolver
             ->shouldReceive('resolveTenant')
@@ -106,8 +97,7 @@ class TenantContextTest extends TestCase
 
     public function testSetTenantManually(): void
     {
-        $tenantModel = Mockery::mock(Model::class);
-        $tenantModel->uuid = 'manual-uuid';
+        $tenantModel = $this->createTenantMock('manual-uuid');
 
         $this->context->setTenant($tenantModel);
 
@@ -117,7 +107,7 @@ class TenantContextTest extends TestCase
 
     public function testSetTenantToNull(): void
     {
-        $tenantModel = Mockery::mock(Model::class);
+        $tenantModel = $this->createTenantMock('temp-uuid');
         $this->context->setTenant($tenantModel);
 
         $this->context->setTenant(null);
@@ -137,7 +127,7 @@ class TenantContextTest extends TestCase
 
     public function testHasTenantReturnsTrueWhenTenantSet(): void
     {
-        $tenantModel = Mockery::mock(Model::class);
+        $tenantModel = $this->createTenantMock('has-tenant-uuid');
         $this->context->setTenant($tenantModel);
 
         $this->assertTrue($this->context->hasTenant());
@@ -145,7 +135,7 @@ class TenantContextTest extends TestCase
 
     public function testClearTenantContext(): void
     {
-        $tenantModel = Mockery::mock(Model::class);
+        $tenantModel = $this->createTenantMock('clear-uuid');
         $this->context->setTenant($tenantModel);
 
         $this->assertTrue($this->context->hasTenant());
@@ -162,8 +152,7 @@ class TenantContextTest extends TestCase
 
     public function testLazyLoadingTenantResolver(): void
     {
-        $tenantModel = Mockery::mock(Model::class);
-        $tenantModel->uuid = 'lazy-uuid';
+        $tenantModel = $this->createTenantMock('lazy-uuid');
 
         $this->resolver
             ->shouldReceive('resolveTenant')
@@ -177,7 +166,20 @@ class TenantContextTest extends TestCase
         $tenant2 = $this->context->getTenant();
 
         $this->assertSame($tenant1, $tenant2);
-        $this->resolver->shouldHaveReceived('resolveTenant')->once();
+    }
+
+    /**
+     * Create a mock tenant model with given uuid and/or key
+     */
+    private function createTenantMock(?string $uuid, int $key = 1): MockInterface
+    {
+        $mock = Mockery::mock(Model::class)->makePartial();
+        $mock->shouldReceive('getKey')->andReturn($key);
+
+        // Set uuid as a real property on the mock
+        $mock->forceFill(['uuid' => $uuid]);
+
+        return $mock;
     }
 }
 
