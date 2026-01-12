@@ -11,7 +11,7 @@ namespace Tests\Contracts;
 
 use Illuminate\Database\Eloquent\Model;
 use Mockery;
-use Oured\MultiTenant\Contracts\TenantResolver;
+use Ouredu\MultiTenant\Contracts\TenantResolver;
 use Tests\TestCase;
 
 class TenantResolverTest extends TestCase

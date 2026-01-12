@@ -7,12 +7,12 @@ declare(strict_types=1);
  * Multi-Tenant Infrastructure for Laravel Services
  */
 
-namespace Oured\MultiTenant\Providers;
+namespace Ouredu\MultiTenant\Providers;
 
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
-use Oured\MultiTenant\Contracts\TenantResolver;
-use Oured\MultiTenant\Tenancy\TenantContext;
+use Ouredu\MultiTenant\Contracts\TenantResolver;
+use Ouredu\MultiTenant\Tenancy\TenantContext;
 
 class TenantServiceProvider extends ServiceProvider
 {

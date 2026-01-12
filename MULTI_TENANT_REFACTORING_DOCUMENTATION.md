@@ -141,7 +141,7 @@ Ensures tenant context is initialized early in request lifecycle.
 // In HttpKernel.php
 protected $middlewareAliases = [
     // ...
-    'tenant' => \Oured\MultiTenant\Middleware\TenantMiddleware::class,
+    'tenant' => \Ouredu\MultiTenant\Middleware\TenantMiddleware::class,
 ];
 ```
 
@@ -245,7 +245,7 @@ To be implemented per project to populate `tenant_id` for existing records based
 ],
 ```
 
-In the package, `Oured\MultiTenant\Providers\TenantServiceProvider` is auto-discovered by Laravel and can be added manually if needed.
+In the package, `Ouredu\MultiTenant\Providers\TenantServiceProvider` is auto-discovered by Laravel and can be added manually if needed.
 
 ### Middleware Registration (Original Service)
 

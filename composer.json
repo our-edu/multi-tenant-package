@@ -22,7 +22,7 @@
     },
     "autoload": {
         "psr-4": {
-            "Oured\\MultiTenant\\": "src/"
+            "Ouredu\\MultiTenant\\": "src/"
         }
     },
     "autoload-dev": {
@@ -38,7 +38,7 @@
     "extra": {
         "laravel": {
             "providers": [
-                "Oured\\MultiTenant\\Providers\\TenantServiceProvider"
+                "Ouredu\\MultiTenant\\Providers\\TenantServiceProvider"
             ]
         }
     },

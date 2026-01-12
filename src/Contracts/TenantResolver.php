@@ -7,7 +7,7 @@ declare(strict_types=1);
  * Multi-Tenant Infrastructure for Laravel Services
  */
 
-namespace Oured\MultiTenant\Contracts;
+namespace Ouredu\MultiTenant\Contracts;
 
 use Illuminate\Database\Eloquent\Model;
 
