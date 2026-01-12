@@ -10,12 +10,12 @@ declare(strict_types=1);
 namespace Tests;
 
 use Illuminate\Container\Container;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\TestCase as PHPUnitTestCase;
 
 /**
  * Base TestCase for all multi-tenant package tests
  */
-abstract class TestCase extends PHPUnit\Framework\TestCase
+abstract class TestCase extends PHPUnitTestCase
 {
     protected Container $app;
 
@@ -24,13 +24,14 @@ abstract class TestCase extends PHPUnit\Framework\TestCase
         parent::setUp();
 
         $this->app = new Container();
+        Container::setInstance($this->app);
     }
 
     protected function tearDown(): void
     {
-        parent::tearDown();
+        Container::setInstance(null);
 
-        $this->app = null;
+        parent::tearDown();
     }
 }
 
