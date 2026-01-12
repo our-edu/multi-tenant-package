@@ -7,7 +7,6 @@
          beStrictAboutTestsThatDoNotTestAnything="true"
          failOnRisky="true"
          failOnWarning="true"
-         verbose="true"
          cacheDirectory=".phpunit.cache">
     <testsuites>
         <testsuite name="Multi-Tenant Package Test Suite">
@@ -15,17 +14,13 @@
         </testsuite>
     </testsuites>
 
-    <coverage processUncoveredFiles="true">
+    <source>
         <include>
             <directory suffix=".php">src</directory>
         </include>
         <exclude>
             <directory>vendor</directory>
         </exclude>
-        <report>
-            <html outputDirectory="coverage" lowUpperBound="50" highLowerBound="80"/>
-            <text outputFile="php://stdout" lowUpperBound="50" highLowerBound="80"/>
-        </report>
-    </coverage>
+    </source>
 </phpunit>
 
