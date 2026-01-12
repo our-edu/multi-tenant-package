@@ -171,6 +171,71 @@ return [
 
 ---
 
+## Testing
+
+This package includes a comprehensive test suite using **PHPUnit** and **Mockery**.
+
+### Running Tests
+
+```bash
+# Run all tests
+composer test
+
+# Run with coverage report
+composer test:coverage
+
+# Using Make (if available)
+make test
+make test-coverage
+```
+
+### Test Structure
+
+Tests are organized by component:
+
+- `tests/Tenancy/` - TenantContext and TenantScope tests
+- `tests/Traits/` - HasTenant trait tests
+- `tests/Middleware/` - TenantMiddleware tests
+- `tests/Contracts/` - TenantResolver contract tests
+- `tests/Providers/` - TenantServiceProvider tests
+
+See [TESTING.md](./TESTING.md) for detailed testing documentation.
+
+---
+
+## Development
+
+### Installation
+
+```bash
+composer install
+```
+
+### Running Tests
+
+```bash
+# Basic tests
+composer test
+
+# With coverage
+composer test:coverage
+
+# Using Makefile
+make help
+make test
+```
+
+### Making Changes
+
+1. Create a feature branch
+2. Write tests first (TDD)
+3. Implement the feature
+4. Run tests: `composer test`
+5. Ensure coverage is maintained (80%+)
+6. Submit a pull request
+
+---
+
 ## How to Use in Other Services
 
 1. Add this package as a path repository and require it.
@@ -183,3 +248,5 @@ return [
 5. Use `tenant` middleware on API routes that must be tenant-aware.
 
 This keeps all the core multi-tenant logic (context, scope, trait, middleware) **in one place**, while letting each service plug in its own tenant resolution rules.
+
+
