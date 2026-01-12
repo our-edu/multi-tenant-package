@@ -71,6 +71,77 @@ class TenantContext
     }
 
     /**
+     * Set the tenant by ID.
+     *
+     * @param string $tenantId The tenant ID to set
+     * @return Model|null The tenant model if found, null otherwise
+     */
+    public function setTenantById(string $tenantId): ?Model
+    {
+        $tenantModel = config('multi-tenant.tenant_model');
+
+        if (! $tenantModel || ! class_exists($tenantModel)) {
+            return null;
+        }
+
+        $tenant = $tenantModel::find($tenantId);
+
+        if ($tenant) {
+            $this->setTenant($tenant);
+        }
+
+        return $tenant;
+    }
+
+    /**
+     * Run a callback within a specific tenant context.
+     *
+     * @param Model $tenant The tenant to use
+     * @param callable $callback The callback to run
+     * @return mixed The callback result
+     */
+    public function runWithTenant(Model $tenant, callable $callback): mixed
+    {
+        $previousTenant = $this->tenant;
+        $wasResolved = $this->resolved;
+
+        $this->setTenant($tenant);
+
+        try {
+            return $callback($tenant);
+        } finally {
+            // Restore previous state
+            $this->tenant = $previousTenant;
+            $this->resolved = $wasResolved;
+        }
+    }
+
+    /**
+     * Run a callback within a specific tenant context (by ID).
+     *
+     * @param string $tenantId The tenant ID to use
+     * @param callable $callback The callback to run
+     * @return mixed The callback result
+     * @throws \RuntimeException If tenant not found
+     */
+    public function runWithTenantId(string $tenantId, callable $callback): mixed
+    {
+        $tenantModel = config('multi-tenant.tenant_model');
+
+        if (! $tenantModel || ! class_exists($tenantModel)) {
+            throw new \RuntimeException('Tenant model not configured');
+        }
+
+        $tenant = $tenantModel::find($tenantId);
+
+        if (! $tenant) {
+            throw new \RuntimeException("Tenant not found: {$tenantId}");
+        }
+
+        return $this->runWithTenant($tenant, $callback);
+    }
+
+    /**
      * Clear the tenant context.
      */
     public function clear(): void
