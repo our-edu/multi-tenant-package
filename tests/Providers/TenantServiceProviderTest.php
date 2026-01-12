@@ -9,9 +9,6 @@ declare(strict_types=1);
 
 namespace Tests\Providers;
 
-use Mockery;
-use Ouredu\MultiTenant\Contracts\TenantResolver;
-use Ouredu\MultiTenant\Providers\TenantServiceProvider;
 use Ouredu\MultiTenant\Tenancy\TenantContext;
 use Tests\TestCase;
 
@@ -43,4 +40,3 @@ class TenantServiceProviderTest extends TestCase
         $this->assertInstanceOf(TenantContext::class, $context);
     }
 }
-

@@ -31,5 +31,3 @@ interface TenantResolver
      */
     public function resolveTenant(): ?Model;
 }
-
-

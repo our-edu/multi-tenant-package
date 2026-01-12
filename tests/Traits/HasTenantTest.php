@@ -12,7 +12,6 @@ namespace Tests\Traits;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Mockery;
-use Mockery\MockInterface;
 use Ouredu\MultiTenant\Tenancy\TenantContext;
 use Ouredu\MultiTenant\Traits\HasTenant;
 use Tests\TestCase;
@@ -119,4 +118,3 @@ class TestModelWithCustomColumn extends Model
         return static::resolveTenantColumn($this);
     }
 }
-
