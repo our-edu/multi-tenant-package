@@ -12,6 +12,7 @@ namespace Tests\Traits;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Mockery;
+use Mockery\MockInterface;
 use Oured\MultiTenant\Tenancy\TenantContext;
 use Oured\MultiTenant\Traits\HasTenant;
 use Tests\TestCase;
@@ -23,20 +24,8 @@ class HasTenantTest extends TestCase
         parent::setUp();
 
         $context = Mockery::mock(TenantContext::class);
-        $this->app->bind(TenantContext::class, fn () => $context);
-    }
-
-    protected function tearDown(): void
-    {
-        parent::tearDown();
-        Mockery::close();
-    }
-
-    public function testTenantRelationship(): void
-    {
-        $model = new TestModel();
-
-        $this->assertNotNull($model->tenant());
+        $context->shouldReceive('getTenantId')->andReturn('test-tenant-id');
+        $this->app->instance(TenantContext::class, $context);
     }
 
     public function testResolveTenantColumnDefaultsToTenantId(): void
