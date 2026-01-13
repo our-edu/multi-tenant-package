@@ -9,3 +9,4 @@
 .env
 composer.lock
 phpunit.xml.dist
+.php-cs-fixer.cache
