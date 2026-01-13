@@ -2,11 +2,25 @@
 
 > © 2026 OurEdu - Reusable multi-tenant infrastructure for OurEdu Laravel services.
 
+[![PHP Version](https://img.shields.io/badge/php-%3E%3D8.1-8892BF.svg)](https://php.net/)
+[![Laravel](https://img.shields.io/badge/laravel-9.x%20%7C%2010.x%20%7C%2011.x-FF2D20.svg)](https://laravel.com)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Reusable multi-tenant infrastructure for OurEdu Laravel services.
 
 This package extracts the **tenant context**, **global tenant scope**, **model trait**, and **middleware** into a single Composer package that can be installed in any service.
 
 It is intentionally generic: each service decides *how* to resolve the tenant (from session, domain, CLI, etc.) by providing its own `TenantResolver` implementation.
+
+## 📚 Documentation
+
+| Document | Description |
+|----------|-------------|
+| [README](./README.md) | Quick start and basic usage |
+| [Architecture](./ARCHITECTURE.md) | Detailed architecture and design decisions |
+| [Contributing](./CONTRIBUTING.md) | Contribution guidelines |
+| [Testing](./TESTING.md) | Testing documentation |
+| [Tenant Resolution Strategies](./docs/TENANT_RESOLUTION_STRATEGIES.md) | Resolution strategy examples |
 
 ---
 
