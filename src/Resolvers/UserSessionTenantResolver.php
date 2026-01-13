@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 use Ouredu\MultiTenant\Contracts\TenantResolver;
+use Throwable;
 
 /**
  * UserSessionTenantResolver
@@ -72,7 +73,7 @@ class UserSessionTenantResolver implements TenantResolver
             $session = getSession();
 
             return $session instanceof Model ? $session : null;
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return null;
         }
     }
@@ -107,7 +108,7 @@ class UserSessionTenantResolver implements TenantResolver
             $session = $modelClass::where($idColumn, $identifier)->first();
 
             return $session instanceof Model ? $session : null;
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return null;
         }
     }
@@ -156,7 +157,7 @@ class UserSessionTenantResolver implements TenantResolver
             $tenant = $tenantModel::find($tenantId);
 
             return $tenant instanceof Model ? $tenant : null;
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return null;
         }
     }
@@ -217,12 +218,10 @@ class UserSessionTenantResolver implements TenantResolver
 
                 return $request;
             }
-        } catch (\Throwable) {
+        } catch (Throwable) {
             // Request not available
         }
 
         return null;
     }
 }
-
-

@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 use Ouredu\MultiTenant\Contracts\TenantResolver;
+use Throwable;
 
 /**
  * DomainTenantResolver
@@ -126,7 +127,7 @@ class DomainTenantResolver implements TenantResolver
             $tenant = $tenantModel::where($domainColumn, $domain)->first();
 
             return $tenant instanceof Model ? $tenant : null;
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return null;
         }
     }
@@ -143,7 +144,7 @@ class DomainTenantResolver implements TenantResolver
 
                 return $request;
             }
-        } catch (\Throwable) {
+        } catch (Throwable) {
             // Request not available
         }
 
@@ -184,5 +185,3 @@ class DomainTenantResolver implements TenantResolver
         return $base !== '' ? $base : null;
     }
 }
-
-

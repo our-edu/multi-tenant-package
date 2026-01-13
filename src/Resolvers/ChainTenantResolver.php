@@ -94,5 +94,3 @@ class ChainTenantResolver implements TenantResolver
         return $this;
     }
 }
-
-

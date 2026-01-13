@@ -12,8 +12,8 @@ namespace Ouredu\MultiTenant\Providers;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
 use Ouredu\MultiTenant\Contracts\TenantResolver;
-use Ouredu\MultiTenant\Tenancy\TenantContext;
 use Ouredu\MultiTenant\Resolvers\ChainTenantResolver;
+use Ouredu\MultiTenant\Tenancy\TenantContext;
 
 class TenantServiceProvider extends ServiceProvider
 {
