@@ -13,6 +13,7 @@ use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
 use Ouredu\MultiTenant\Contracts\TenantResolver;
 use Ouredu\MultiTenant\Tenancy\TenantContext;
+use Ouredu\MultiTenant\Resolvers\ChainTenantResolver;
 
 class TenantServiceProvider extends ServiceProvider
 {
@@ -20,12 +21,44 @@ class TenantServiceProvider extends ServiceProvider
     {
         $this->mergeConfigFrom(__DIR__ . '/../../config/multi-tenant.php', 'multi-tenant');
 
+        // Register a default TenantResolver if the host application hasn't bound one
+        $this->registerResolver();
+
         $this->app->singleton(TenantContext::class, function (Application $app): TenantContext {
             /** @var TenantResolver $resolver */
             $resolver = $app->make(TenantResolver::class);
 
             return new TenantContext($resolver);
         });
+    }
+
+    /**
+     * Register the TenantResolver binding.
+     *
+     * If a resolver is already bound by the host application, we do nothing.
+     * Otherwise, we look at the configured resolver class and fall back to
+     * ChainTenantResolver when needed.
+     */
+    protected function registerResolver(): void
+    {
+        // Do not override an explicit binding from the host application
+        if ($this->app->bound(TenantResolver::class)) {
+            return;
+        }
+
+        $resolverClass = config('multi-tenant.resolver');
+
+        // If resolver is explicitly set to null, the host must bind its own
+        if ($resolverClass === null) {
+            return;
+        }
+
+        if (is_string($resolverClass) && class_exists($resolverClass)) {
+            $this->app->bind(TenantResolver::class, $resolverClass);
+        } else {
+            // Fallback to the default chain resolver
+            $this->app->bind(TenantResolver::class, ChainTenantResolver::class);
+        }
     }
 
     public function boot(): void
