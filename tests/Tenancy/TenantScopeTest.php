@@ -46,14 +46,13 @@ class TenantScopeTest extends TestCase
             ->andReturnSelf();
 
         $this->context
-            ->shouldReceive('hasTenant')
-            ->once()
-            ->andReturn(true);
-
-        $this->context
             ->shouldReceive('getTenantId')
             ->once()
             ->andReturn('tenant-uuid-123');
+
+        $this->context
+            ->shouldReceive('hasTenant')
+            ->andReturn(true);
 
         $this->scope->apply($builder, $model);
 
@@ -64,26 +63,6 @@ class TenantScopeTest extends TestCase
     {
         $builder = Mockery::mock(Builder::class);
         $model = Mockery::mock(Model::class);
-
-        $this->context
-            ->shouldReceive('hasTenant')
-            ->once()
-            ->andReturn(false);
-
-        $this->scope->apply($builder, $model);
-
-        $this->assertTrue(true); // Verify no exceptions
-    }
-
-    public function testApplyScopeDoesNothingWhenTenantIdIsNull(): void
-    {
-        $builder = Mockery::mock(Builder::class);
-        $model = Mockery::mock(Model::class);
-
-        $this->context
-            ->shouldReceive('hasTenant')
-            ->once()
-            ->andReturn(true);
 
         $this->context
             ->shouldReceive('getTenantId')
@@ -115,34 +94,112 @@ class TenantScopeTest extends TestCase
             ->andReturnSelf();
 
         $this->context
-            ->shouldReceive('hasTenant')
-            ->once()
-            ->andReturn(true);
-
-        $this->context
             ->shouldReceive('getTenantId')
             ->once()
             ->andReturn('account-uuid-456');
+
+        $this->context
+            ->shouldReceive('hasTenant')
+            ->andReturn(true);
 
         $this->scope->apply($builder, $model);
 
         $this->assertTrue(true); // Verify no exceptions
     }
 
-    public function testForTenantMethod(): void
+    public function testApplyScopeUsesCustomTenantColumnProperty(): void
     {
-        $model = Mockery::mock(Model::class);
-        $model->shouldReceive('getTable')->andReturn('users');
+        // Create a real test model that defines tenantColumn property
+        $model = new class () extends Model {
+            protected $table = 'organizations';
+
+            public string $tenantColumn = 'org_id';
+        };
 
         $builder = Mockery::mock(Builder::class);
         $builder->shouldReceive('getModel')->andReturn($model);
         $builder->shouldReceive('where')
-            ->with('users.tenant_id', 'specific-tenant-id')
+            ->with('organizations.org_id', 'org-uuid-789')
             ->once()
             ->andReturnSelf();
 
-        $result = $this->scope->forTenant($builder, 'specific-tenant-id');
+        $this->context
+            ->shouldReceive('getTenantId')
+            ->once()
+            ->andReturn('org-uuid-789');
 
-        $this->assertSame($builder, $result);
+        $this->context
+            ->shouldReceive('hasTenant')
+            ->andReturn(true);
+
+        $this->scope->apply($builder, $model);
+
+        $this->assertTrue(true); // Verify no exceptions
+    }
+
+    public function testApplyScopeSkipsModelWithWithoutTenantScopeProperty(): void
+    {
+        // Create a real test model that excludes tenant scope
+        $model = new class () extends Model {
+            protected $table = 'global_settings';
+
+            public bool $withoutTenantScope = true;
+        };
+
+        $builder = Mockery::mock(Builder::class);
+        $builder->shouldReceive('getModel')->andReturn($model);
+        $builder->shouldNotReceive('where');
+
+        $this->context
+            ->shouldReceive('getTenantId')
+            ->once()
+            ->andReturn('tenant-uuid-123');
+
+        $this->scope->apply($builder, $model);
+
+        $this->assertTrue(true); // Verify no exceptions and where was not called
+    }
+
+    public function testApplyScopeSkipsInConsoleWithoutTenant(): void
+    {
+        // When running in console (which PHPUnit does) and no tenant is set,
+        // the scope should skip applying the WHERE clause
+        $model = Mockery::mock(Model::class);
+
+        $builder = Mockery::mock(Builder::class);
+        $builder->shouldNotReceive('where');
+
+        $this->context
+            ->shouldReceive('getTenantId')
+            ->once()
+            ->andReturn('tenant-uuid-123');
+
+        $this->context
+            ->shouldReceive('hasTenant')
+            ->once()
+            ->andReturn(false);
+
+        // We're already running in console (PHPUnit), so this test will
+        // naturally trigger the console detection path
+        $this->scope->apply($builder, $model);
+
+        $this->assertTrue(true); // Verify no exceptions and where was not called
+    }
+
+    public function testExtendAddsMacros(): void
+    {
+        $builder = Mockery::mock(Builder::class);
+
+        $builder->shouldReceive('macro')
+            ->with('withoutTenantScope', Mockery::type('callable'))
+            ->once();
+
+        $builder->shouldReceive('macro')
+            ->with('forTenant', Mockery::type('callable'))
+            ->once();
+
+        $this->scope->extend($builder);
+
+        $this->assertTrue(true); // Verify macros were registered
     }
 }
