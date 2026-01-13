@@ -12,8 +12,8 @@ namespace Tests;
 use Illuminate\Database\Eloquent\Model;
 use Mockery;
 use Orchestra\Testbench\TestCase as OrchestraTestCase;
-use Oured\MultiTenant\Contracts\TenantResolver;
-use Oured\MultiTenant\Providers\TenantServiceProvider;
+use Ouredu\MultiTenant\Contracts\TenantResolver;
+use Ouredu\MultiTenant\Providers\TenantServiceProvider;
 
 /**
  * Base TestCase for all multi-tenant package tests
@@ -52,7 +52,7 @@ abstract class TestCase extends OrchestraTestCase
 
         // Bind a default resolver that returns null
         $app->bind(TenantResolver::class, function () {
-            return new class implements TenantResolver {
+            return new class () implements TenantResolver {
                 public function resolveTenant(): ?Model
                 {
                     return null;
@@ -61,4 +61,3 @@ abstract class TestCase extends OrchestraTestCase
         });
     }
 }
-

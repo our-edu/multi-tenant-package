@@ -7,13 +7,13 @@ declare(strict_types=1);
  * Multi-Tenant Infrastructure for Laravel Services
  */
 
-namespace Oured\MultiTenant\Traits;
+namespace Ouredu\MultiTenant\Traits;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Oured\MultiTenant\Tenancy\TenantContext;
-use Oured\MultiTenant\Tenancy\TenantScope;
+use Ouredu\MultiTenant\Tenancy\TenantContext;
+use Ouredu\MultiTenant\Tenancy\TenantScope;
 
 /**
  * HasTenant
@@ -41,7 +41,7 @@ trait HasTenant
 
             if (! $model->getAttribute($column)) {
                 /** @var TenantContext $context */
-                $context  = app(TenantContext::class);
+                $context = app(TenantContext::class);
                 $tenantId = $context->getTenantId();
 
                 if ($tenantId) {
@@ -56,7 +56,7 @@ trait HasTenant
 
             if (! $model->getAttribute($column)) {
                 /** @var TenantContext $context */
-                $context  = app(TenantContext::class);
+                $context = app(TenantContext::class);
                 $tenantId = $context->getTenantId();
 
                 if ($tenantId) {
@@ -89,7 +89,7 @@ trait HasTenant
     {
         $column = static::resolveTenantColumn($this);
 
-        return $query->where($this->getTable().'.'.$column, $tenantId);
+        return $query->where($this->getTable() . '.' . $column, $tenantId);
     }
 
     /**
@@ -106,5 +106,3 @@ trait HasTenant
         return 'tenant_id';
     }
 }
-
-

@@ -1,14 +1,29 @@
 {
     "name": "ouredu/multi-tenant",
     "description": "Shared multi-tenant infrastructure for OurEdu Laravel services (tenant context, global scope, traits, middleware).",
+    "keywords": [
+        "laravel",
+        "multi-tenant",
+        "multitenancy",
+        "tenant",
+        "saas",
+        "ouredu"
+    ],
     "type": "library",
     "license": "MIT",
+    "homepage": "https://github.com/ouredu/multi-tenant",
     "authors": [
         {
             "name": "OurEdu",
+            "email": "dev@ouredu.com",
+            "homepage": "https://ouredu.com",
             "role": "Developer"
         }
     ],
+    "support": {
+        "issues": "https://github.com/ouredu/multi-tenant/issues",
+        "source": "https://github.com/ouredu/multi-tenant"
+    },
     "require": {
         "php": ">=8.1",
         "illuminate/support": "^9.0|^10.0|^11.0",
@@ -18,11 +33,12 @@
     "require-dev": {
         "phpunit/phpunit": "^10.0",
         "orchestra/testbench": "^8.0|^9.0",
-        "mockery/mockery": "^1.5"
+        "mockery/mockery": "^1.5",
+        "friendsofphp/php-cs-fixer": "^3.0"
     },
     "autoload": {
         "psr-4": {
-            "Oured\\MultiTenant\\": "src/"
+            "Ouredu\\MultiTenant\\": "src/"
         }
     },
     "autoload-dev": {
@@ -33,17 +49,16 @@
     "scripts": {
         "test": "phpunit",
         "test:coverage": "phpunit --coverage-html=coverage",
-        "test:watch": "phpunit --watch"
+        "lint": "php-cs-fixer fix --dry-run --diff",
+        "lint:fix": "php-cs-fixer fix"
     },
     "extra": {
         "laravel": {
             "providers": [
-                "Oured\\MultiTenant\\Providers\\TenantServiceProvider"
+                "Ouredu\\MultiTenant\\Providers\\TenantServiceProvider"
             ]
         }
     },
     "minimum-stability": "stable",
     "prefer-stable": true
 }
-
-

@@ -1,157 +1,94 @@
-# multi-tenant
+# Laravel Multi-Tenant
 
-> © 2026 OurEdu - Reusable multi-tenant infrastructure for OurEdu Laravel services.
+[![Packagist Version](https://img.shields.io/packagist/v/ouredu/multi-tenant.svg?style=flat-square)](https://packagist.org/packages/ouredu/multi-tenant)
+[![License](https://img.shields.io/packagist/l/ouredu/multi-tenant.svg?style=flat-square)](LICENSE)
+[![PHP Version](https://img.shields.io/packagist/php-v/ouredu/multi-tenant.svg?style=flat-square)](composer.json)
+[![Laravel Version](https://img.shields.io/badge/Laravel-9.x%20|%2010.x%20|%2011.x-red.svg?style=flat-square)](composer.json)
 
-Reusable multi-tenant infrastructure for OurEdu Laravel services.
+A Laravel package for building multi-tenant applications. This package provides tenant context management, automatic query scoping, and model traits for seamless multi-tenancy support.
 
-This package extracts the **tenant context**, **global tenant scope**, **model trait**, and **middleware** into a single Composer package that can be installed in any service.
+## Features
 
-It is intentionally generic: each service decides *how* to resolve the tenant (from session, domain, CLI, etc.) by providing its own `TenantResolver` implementation.
+- **Tenant Context** - Centralized tenant state management across requests, jobs, and commands
+- **Automatic Query Scoping** - All queries automatically filtered by tenant
+- **Model Trait** - Simple `HasTenant` trait for tenant-aware models
+- **Flexible Resolution** - Implement your own tenant resolution strategy
+- **Middleware Support** - HTTP middleware for tenant resolution
+- **Auto-assignment** - Automatically sets tenant ID on model creation/update
+- **Zero Configuration** - Works out of the box with sensible defaults
+- **Customizable** - Override tenant column names per model
+- **Queue Support** - Maintain tenant context in queued jobs
+- **Command Support** - Run commands for specific tenants
 
----
+## Requirements
+
+- PHP 8.1 or higher
+- Laravel 9.x, 10.x, or 11.x
 
 ## Installation
 
-### 1. Add the package (path repository)
-
-In your service `composer.json`:
-
-```json
-{
-  "repositories": [
-    {
-      "type": "path",
-      "url": "../multi-tenant-package"
-    }
-  ],
-  "require": {
-    "ouredu/multi-tenant": "*"
-  }
-}
-```
-
-Then:
+Install the package via Composer:
 
 ```bash
-composer update ouredu/multi-tenant
+composer require ouredu/multi-tenant
 ```
 
-### 2. Publish config (optional)
+The package will auto-register its service provider and automatically publish the configuration file.
 
-```bash
-php artisan vendor:publish --provider=\"Oured\\MultiTenant\\Providers\\TenantServiceProvider\" --tag=config
-```
+## Quick Start
 
-This will create `config/multi-tenant.php` in your service.
+### 1. Implement a Tenant Resolver
 
----
-
-## Core Concepts
-
-### TenantContext
-
-`Oured\MultiTenant\Tenancy\TenantContext`
-
-- Caches the current tenant model for the current request / job / command.
-- Provides:
-  - `getTenant(): ?Model`
-  - `getTenantId(): ?string`
-  - `hasTenant(): bool`
-  - `setTenant(?Model $tenant): void`
-  - `clear(): void`
-
-It **does not** know how to resolve the tenant by itself — it delegates that to a `TenantResolver` that you implement in each service.
-
-### TenantResolver (you implement this)
-
-`Oured\MultiTenant\Contracts\TenantResolver`
-
-You must bind an implementation in your service, for example in a service provider:
+Create a resolver that determines the current tenant:
 
 ```php
-use Illuminate\Support\ServiceProvider;
-use Oured\MultiTenant\Contracts\TenantResolver;
-use Oured\MultiTenant\Tenancy\TenantContext;
+use Ouredu\MultiTenant\Contracts\TenantResolver;
 
-class AppTenantServiceProvider extends ServiceProvider
+class AppTenantResolver implements TenantResolver
 {
-    public function register(): void
+    public function resolveTenant(): ?Model
     {
-        $this->app->bind(TenantResolver::class, function () {
-            return new class implements TenantResolver {
-                public function resolveTenant(): ?\Illuminate\Database\Eloquent\Model
-                {
-                    // Example: resolve from UserSession.tenant_id
-                    $session = getSession(); // your existing helper
-                    if (! $session || ! $session->tenant_id) {
-                        return null;
-                    }
-
-                    return \Domain\Models\Tenant\Tenant::find($session->tenant_id);
-                }
-            };
-        });
+        // Resolve from authenticated user
+        return auth()->user()?->tenant;
+        
+        // Or from session
+        // return Tenant::find(session('tenant_id'));
+        
+        // Or from subdomain
+        // $subdomain = explode('.', request()->getHost())[0];
+        // return Tenant::where('subdomain', $subdomain)->first();
     }
 }
 ```
 
-You can also implement resolution from **domain**, **CLI arguments**, etc.
+### 2. Register the Resolver
 
----
+In your `AppServiceProvider`:
 
-## Model Integration
+```php
+use Ouredu\MultiTenant\Contracts\TenantResolver;
 
-### 1. Use the HasTenant trait
+public function register(): void
+{
+    $this->app->bind(TenantResolver::class, AppTenantResolver::class);
+}
+```
 
-In any model that should be tenant-scoped:
+### 3. Add Trait to Models
+
+Add the `HasTenant` trait to models that should be tenant-scoped:
 
 ```php
 use Illuminate\Database\Eloquent\Model;
-use Oured\MultiTenant\Traits\HasTenant;
+use Ouredu\MultiTenant\Traits\HasTenant;
 
-class Payment extends Model
+class Project extends Model
 {
     use HasTenant;
-
-    // Optional: custom tenant column
-    public function getTenantColumn(): string
-    {
-        return 'tenant_id'; // or 'branch_uuid', etc.
-    }
 }
 ```
 
-Features:
-- Automatically applies the `TenantScope` global scope.
-- Automatically sets `tenant_id` on `creating` and `updating` if missing (from `TenantContext`).
-- Provides:
-  - `tenant()` relationship
-  - `scopeForTenant($query, string $tenantId)`
-
----
-
-## Middleware
-
-`Oured\MultiTenant\Middleware\TenantMiddleware`
-
-Register it in your kernel (or via attributes) and use it on routes that should have tenant context:
-
-```php
-// In HttpKernel.php
-protected $middlewareAliases = [
-    // ...
-    'tenant' => \Oured\MultiTenant\Middleware\TenantMiddleware::class,
-];
-
-// In routes/api.php
-Route::middleware(['tenant'])->group(function () {
-    Route::get('/payments', [PaymentController::class, 'index']);
-});
-```
-
-The middleware just triggers `TenantContext::getTenant()` early; the real logic is in your `TenantResolver`.
-
----
+That's it! All queries on `Project` will now be automatically scoped to the current tenant.
 
 ## Jobs & Queues
 
@@ -282,98 +219,185 @@ See [docs/TENANT_RESOLUTION_STRATEGIES.md](docs/TENANT_RESOLUTION_STRATEGIES.md)
 
 ## Configuration
 
-`config/multi-tenant.php`:
-
-- `tenant_model`: the class name of your Tenant model.
-- `tenant_column`: default tenant column name when a model does not define `getTenantColumn()`.
-
-Example:
+The configuration file is automatically published to `config/multi-tenant.php`:
 
 ```php
 return [
-    'tenant_model' => \Domain\Models\Tenant\Tenant::class,
+    // Your tenant model class
+    'tenant_model' => App\Models\Tenant::class,
+    
+    // Default tenant column name
     'tenant_column' => 'tenant_id',
 ];
 ```
 
----
+## Usage
+
+### Tenant Context
+
+Access the current tenant anywhere in your application:
+
+```php
+use Ouredu\MultiTenant\Tenancy\TenantContext;
+
+$context = app(TenantContext::class);
+
+// Get current tenant
+$tenant = $context->getTenant();
+
+// Get tenant ID
+$tenantId = $context->getTenantId();
+
+// Check if tenant exists
+if ($context->hasTenant()) {
+    // ...
+}
+
+// Manually set tenant (for testing, jobs, commands)
+$context->setTenant($tenant);
+$context->setTenantById($tenantId);
+
+// Run code in tenant context
+$context->runWithTenant($tenant, function ($tenant) {
+    // All queries scoped to $tenant
+});
+```
+
+### Model Trait
+
+```php
+use Ouredu\MultiTenant\Traits\HasTenant;
+
+class Invoice extends Model
+{
+    use HasTenant;
+    
+    // Optional: custom tenant column
+    public function getTenantColumn(): string
+    {
+        return 'organization_id';
+    }
+}
+```
+
+The trait provides:
+- Automatic global scope for tenant filtering
+- Automatic tenant ID assignment on create/update
+- `tenant()` relationship method
+- `scopeForTenant($query, $tenantId)` scope
+
+### Middleware
+
+Register and use the tenant middleware:
+
+```php
+// In bootstrap/app.php or Kernel.php
+->withMiddleware(function (Middleware $middleware) {
+    $middleware->alias([
+        'tenant' => \Ouredu\MultiTenant\Middleware\TenantMiddleware::class,
+    ]);
+})
+
+// In routes
+Route::middleware('tenant')->group(function () {
+    Route::resource('projects', ProjectController::class);
+});
+```
+
+### Queued Jobs
+
+For jobs that need tenant context, set the tenant ID in the job:
+
+```php
+class ProcessInvoice implements ShouldQueue
+{
+    public ?string $tenantId = null;
+
+    public function __construct(public Invoice $invoice)
+    {
+        $this->tenantId = app(TenantContext::class)->getTenantId();
+    }
+
+    public function handle(): void
+    {
+        // Restore tenant context
+        app(TenantContext::class)->setTenantById($this->tenantId);
+        
+        // Process invoice...
+    }
+}
+```
+
+### Artisan Commands
+
+Run commands for specific tenants:
+
+```php
+class GenerateReports extends Command
+{
+    protected $signature = 'reports:generate {--tenant= : Tenant ID}';
+
+    public function handle(): int
+    {
+        $tenantId = $this->option('tenant');
+        
+        if ($tenantId) {
+            app(TenantContext::class)->setTenantById($tenantId);
+        }
+        
+        // Generate reports...
+        
+        return self::SUCCESS;
+    }
+}
+```
+
+## API Reference
+
+### TenantContext
+
+| Method | Description |
+|--------|-------------|
+| `getTenant(): ?Model` | Get the current tenant model |
+| `getTenantId(): ?string` | Get the current tenant ID |
+| `hasTenant(): bool` | Check if a tenant is set |
+| `setTenant(?Model $tenant): void` | Manually set the tenant |
+| `setTenantById(string $id): ?Model` | Set tenant by ID |
+| `clear(): void` | Clear the tenant context |
+| `runWithTenant(Model $tenant, callable $callback): mixed` | Run callback with tenant |
+| `runWithTenantId(string $id, callable $callback): mixed` | Run callback with tenant ID |
+
+### HasTenant Trait
+
+| Method | Description |
+|--------|-------------|
+| `tenant(): BelongsTo` | Relationship to tenant model |
+| `scopeForTenant($query, string $id): Builder` | Scope to specific tenant |
+| `getTenantColumn(): string` | Get tenant column name (override) |
 
 ## Testing
 
-This package includes a comprehensive test suite using **PHPUnit** and **Mockery**.
-
-### Running Tests
-
 ```bash
-# Run all tests
+# Run tests
 composer test
 
-# Run with coverage report
+# Run with coverage
 composer test:coverage
-
-# Using Make (if available)
-make test
-make test-coverage
 ```
 
-### Test Structure
+## Contributing
 
-Tests are organized by component:
+Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
-- `tests/Tenancy/` - TenantContext and TenantScope tests
-- `tests/Traits/` - HasTenant trait tests
-- `tests/Middleware/` - TenantMiddleware tests
-- `tests/Contracts/` - TenantResolver contract tests
-- `tests/Providers/` - TenantServiceProvider tests
+## Changelog
 
-See [TESTING.md](./TESTING.md) for detailed testing documentation.
+Please see [CHANGELOG.md](CHANGELOG.md) for version history.
 
----
+## License
 
-## Development
+The MIT License (MIT). Please see [LICENSE](LICENSE) for more information.
 
-### Installation
+## Credits
 
-```bash
-composer install
-```
-
-### Running Tests
-
-```bash
-# Basic tests
-composer test
-
-# With coverage
-composer test:coverage
-
-# Using Makefile
-make help
-make test
-```
-
-### Making Changes
-
-1. Create a feature branch
-2. Write tests first (TDD)
-3. Implement the feature
-4. Run tests: `composer test`
-5. Ensure coverage is maintained (80%+)
-6. Submit a pull request
-
----
-
-## How to Use in Other Services
-
-1. Add this package as a path repository and require it.
-2. Publish and adjust `config/multi-tenant.php`.
-3. Implement and bind a `TenantResolver` that matches that service:
-   - From `UserSession.tenant_id`
-   - From request domain/subdomain
-   - From CLI option (for commands)
-4. Add `HasTenant` to all tenant-scoped models.
-5. Use `tenant` middleware on API routes that must be tenant-aware.
-
-This keeps all the core multi-tenant logic (context, scope, trait, middleware) **in one place**, while letting each service plug in its own tenant resolution rules.
-
+- [OurEdu](https://github.com/ouredu)
 
