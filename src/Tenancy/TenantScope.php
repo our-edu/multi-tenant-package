@@ -7,7 +7,7 @@ declare(strict_types=1);
  * Multi-Tenant Infrastructure for Laravel Services
  */
 
-namespace Oured\MultiTenant\Tenancy;
+namespace Ouredu\MultiTenant\Tenancy;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -117,5 +117,3 @@ class TenantScope implements Scope
         return true;
     }
 }
-
-

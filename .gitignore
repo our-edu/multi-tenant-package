@@ -3,6 +3,7 @@
 /.idea/
 /.vscode/
 /.phpunit.cache/
+/.php-cs-fixer.cache
 /coverage/
 .DS_Store
 .env

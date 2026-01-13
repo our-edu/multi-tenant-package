@@ -13,14 +13,14 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Mockery;
 use Mockery\MockInterface;
-use Oured\MultiTenant\Contracts\TenantResolver;
-use Oured\MultiTenant\Tenancy\TenantContext;
-use Oured\MultiTenant\Tenancy\TenantScope;
+use Ouredu\MultiTenant\Tenancy\TenantContext;
+use Ouredu\MultiTenant\Tenancy\TenantScope;
 use Tests\TestCase;
 
 class TenantScopeTest extends TestCase
 {
     private TenantScope $scope;
+
     private TenantContext|MockInterface $context;
 
     protected function setUp(): void
@@ -77,7 +77,7 @@ class TenantScopeTest extends TestCase
     public function testApplyScopeUsesCustomTenantColumn(): void
     {
         // Create a real test model that defines getTenantColumn
-        $model = new class extends Model {
+        $model = new class () extends Model {
             protected $table = 'accounts';
 
             public function getTenantColumn(): string
@@ -201,4 +201,3 @@ class TenantScopeTest extends TestCase
         $this->assertTrue(true); // Verify macros were registered
     }
 }
-

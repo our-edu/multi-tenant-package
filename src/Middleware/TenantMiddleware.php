@@ -7,11 +7,11 @@ declare(strict_types=1);
  * Multi-Tenant Infrastructure for Laravel Services
  */
 
-namespace Oured\MultiTenant\Middleware;
+namespace Ouredu\MultiTenant\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Oured\MultiTenant\Tenancy\TenantContext;
+use Ouredu\MultiTenant\Tenancy\TenantContext;
 
 /**
  * TenantMiddleware
@@ -33,5 +33,3 @@ class TenantMiddleware
         return $next($request);
     }
 }
-
-

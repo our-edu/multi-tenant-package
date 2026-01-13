@@ -32,5 +32,3 @@ return [
     */
     'tenant_column' => env('MULTI_TENANT_COLUMN', 'tenant_id'),
 ];
-
-
