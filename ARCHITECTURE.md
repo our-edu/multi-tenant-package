@@ -112,7 +112,7 @@ The central service managing tenant state throughout the request lifecycle.
 **Key Methods:**
 
 ```php
-use Oured\MultiTenant\Tenancy\TenantContext;
+use Ouredu\MultiTenant\Tenancy\TenantContext;
 
 $context = app(TenantContext::class);
 
@@ -190,7 +190,7 @@ Interface that each service must implement to define how tenants are resolved.
 **Location:** `src/Contracts/TenantResolver.php`
 
 ```php
-use Oured\MultiTenant\Contracts\TenantResolver;
+use Ouredu\MultiTenant\Contracts\TenantResolver;
 
 class SessionTenantResolver implements TenantResolver
 {
@@ -218,8 +218,8 @@ Model trait providing tenant relationship and automatic tenant assignment.
 **Usage:**
 
 ```php
-use Oured\MultiTenant\Traits\HasTenant;
-use Oured\MultiTenant\Tenancy\TenantScope;
+use Ouredu\MultiTenant\Traits\HasTenant;
+use Ouredu\MultiTenant\Tenancy\TenantScope;
 
 class Payment extends Model
 {
@@ -269,7 +269,7 @@ HTTP middleware that initializes tenant context early in the request lifecycle.
 ```php
 // app/Http/Kernel.php
 protected $middlewareAliases = [
-    'tenant' => \Oured\MultiTenant\Middleware\TenantMiddleware::class,
+    'tenant' => \Ouredu\MultiTenant\Middleware\TenantMiddleware::class,
 ];
 
 // routes/api.php
@@ -287,7 +287,7 @@ Trait for queue jobs to maintain tenant context.
 **Location:** `src/Traits/TenantAwareJob.php`
 
 ```php
-use Oured\MultiTenant\Traits\TenantAwareJob;
+use Ouredu\MultiTenant\Traits\TenantAwareJob;
 
 class ProcessPayment implements ShouldQueue
 {
@@ -310,7 +310,7 @@ Trait for Artisan commands to handle tenant context.
 **Location:** `src/Traits/TenantAwareCommand.php`
 
 ```php
-use Oured\MultiTenant\Traits\TenantAwareCommand;
+use Ouredu\MultiTenant\Traits\TenantAwareCommand;
 
 class SyncDataCommand extends Command
 {
@@ -408,14 +408,14 @@ composer require ouredu/multi-tenant
 ### Step 2: Publish Configuration
 
 ```bash
-php artisan vendor:publish --provider="Oured\MultiTenant\Providers\TenantServiceProvider" --tag=config
+php artisan vendor:publish --provider="Ouredu\MultiTenant\Providers\TenantServiceProvider" --tag=config
 ```
 
 ### Step 3: Implement TenantResolver
 
 ```php
 // app/Providers/TenantServiceProvider.php
-use Oured\MultiTenant\Contracts\TenantResolver;
+use Ouredu\MultiTenant\Contracts\TenantResolver;
 
 class TenantServiceProvider extends ServiceProvider
 {
@@ -431,15 +431,15 @@ class TenantServiceProvider extends ServiceProvider
 ```php
 // app/Http/Kernel.php
 protected $middlewareAliases = [
-    'tenant' => \Oured\MultiTenant\Middleware\TenantMiddleware::class,
+    'tenant' => \Ouredu\MultiTenant\Middleware\TenantMiddleware::class,
 ];
 ```
 
 ### Step 5: Update Models
 
 ```php
-use Oured\MultiTenant\Traits\HasTenant;
-use Oured\MultiTenant\Tenancy\TenantScope;
+use Ouredu\MultiTenant\Traits\HasTenant;
+use Ouredu\MultiTenant\Tenancy\TenantScope;
 
 class YourModel extends Model
 {
@@ -517,7 +517,7 @@ public function testFeature(): void
 ### Unit Test Example
 
 ```php
-use Oured\MultiTenant\Tenancy\TenantContext;
+use Ouredu\MultiTenant\Tenancy\TenantContext;
 
 class TenantIsolationTest extends TestCase
 {
