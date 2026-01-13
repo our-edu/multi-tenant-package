@@ -47,7 +47,7 @@ class TenantScope implements Scope
 
         if ($tenantId && $this->shouldApplyScope($model)) {
             $column = $this->getTenantColumn($model);
-            $builder->where($builder->getModel()->getTable().'.'.$column, $tenantId);
+            $builder->where($builder->getModel()->getTable() . '.' . $column, $tenantId);
         }
     }
 
@@ -70,7 +70,7 @@ class TenantScope implements Scope
             $column = $this->getTenantColumn($model);
 
             return $builder->withoutGlobalScope(TenantScope::class)
-                ->where($model->getTable().'.'.$column, $tenantId);
+                ->where($model->getTable() . '.' . $column, $tenantId);
         });
     }
 

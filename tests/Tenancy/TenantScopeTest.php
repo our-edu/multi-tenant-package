@@ -110,8 +110,9 @@ class TenantScopeTest extends TestCase
     public function testApplyScopeUsesCustomTenantColumnProperty(): void
     {
         // Create a real test model that defines tenantColumn property
-        $model = new class extends Model {
+        $model = new class () extends Model {
             protected $table = 'organizations';
+
             public string $tenantColumn = 'org_id';
         };
 
@@ -139,8 +140,9 @@ class TenantScopeTest extends TestCase
     public function testApplyScopeSkipsModelWithWithoutTenantScopeProperty(): void
     {
         // Create a real test model that excludes tenant scope
-        $model = new class extends Model {
+        $model = new class () extends Model {
             protected $table = 'global_settings';
+
             public bool $withoutTenantScope = true;
         };
 
