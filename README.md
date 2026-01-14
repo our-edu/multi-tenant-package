@@ -30,7 +30,7 @@ A Laravel package for building multi-tenant applications. This package provides 
 Install the package via Composer:
 
 ```bash
-composer require ouredu/multi-tenant
+composer require our-edu/multi-tenant
 ```
 
 The package will auto-register its service provider and automatically publish the configuration file.

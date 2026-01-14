@@ -1,5 +1,5 @@
 {
-    "name": "ouredu/multi-tenant",
+    "name": "our-edu/multi-tenant",
     "description": "Shared multi-tenant infrastructure for OurEdu Laravel services (tenant context, global scope, traits, middleware).",
     "keywords": [
         "laravel",
