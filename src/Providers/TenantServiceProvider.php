@@ -24,7 +24,7 @@ class TenantServiceProvider extends ServiceProvider
         // Register a default TenantResolver if the host application hasn't bound one
         $this->registerResolver();
 
-        $this->app->singleton(TenantContext::class, function (Application $app): TenantContext {
+        $this->app->scoped(TenantContext::class, function (Application $app): TenantContext {
             /** @var TenantResolver $resolver */
             $resolver = $app->make(TenantResolver::class);
 
