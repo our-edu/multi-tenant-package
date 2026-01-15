@@ -64,4 +64,3 @@ class DomainTenantResolverTest extends TestCase
         $this->assertEquals('App\\Models\\CustomTenant', $resolver->exposedGetTenantModel());
     }
 }
-

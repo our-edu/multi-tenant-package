@@ -85,4 +85,3 @@ class UserSessionTenantResolverTest extends TestCase
         $this->assertEquals('customSessionHelper', $resolver->exposedGetSessionHelperName());
     }
 }
-

@@ -71,4 +71,3 @@ class ChainTenantResolverTest extends TestCase
         $this->assertNull($tenantId);
     }
 }
-

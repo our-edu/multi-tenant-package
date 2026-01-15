@@ -13,6 +13,7 @@ use Mockery;
 use Mockery\MockInterface;
 use Ouredu\MultiTenant\Contracts\TenantResolver;
 use Ouredu\MultiTenant\Tenancy\TenantContext;
+use RuntimeException;
 use Tests\TestCase;
 
 class TenantContextTest extends TestCase
@@ -136,9 +137,9 @@ class TenantContextTest extends TestCase
 
         try {
             $this->context->runForTenant(2, function () {
-                throw new \RuntimeException('Test exception');
+                throw new RuntimeException('Test exception');
             });
-        } catch (\RuntimeException) {
+        } catch (RuntimeException) {
             // Expected
         }
 
