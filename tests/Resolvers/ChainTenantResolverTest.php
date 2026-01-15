@@ -34,7 +34,7 @@ class ChainTenantResolverTest extends TestCase
     public function testResolveTenantIdReturnsFirstMatchingResult(): void
     {
         $resolver1 = Mockery::mock(TenantResolver::class);
-        $resolver1->shouldReceive('resolveTenantId')->andReturn('tenant-from-first');
+        $resolver1->shouldReceive('resolveTenantId')->andReturn(1);
 
         $resolver2 = Mockery::mock(TenantResolver::class);
         $resolver2->shouldNotReceive('resolveTenantId');
@@ -43,7 +43,7 @@ class ChainTenantResolverTest extends TestCase
 
         $tenantId = $chain->resolveTenantId();
 
-        $this->assertEquals('tenant-from-first', $tenantId);
+        $this->assertEquals(1, $tenantId);
     }
 
     public function testResolveTenantIdTriesSecondResolverIfFirstReturnsNull(): void
@@ -52,13 +52,13 @@ class ChainTenantResolverTest extends TestCase
         $resolver1->shouldReceive('resolveTenantId')->andReturnNull();
 
         $resolver2 = Mockery::mock(TenantResolver::class);
-        $resolver2->shouldReceive('resolveTenantId')->andReturn('tenant-from-second');
+        $resolver2->shouldReceive('resolveTenantId')->andReturn(2);
 
         $chain = new ChainTenantResolver([$resolver1, $resolver2]);
 
         $tenantId = $chain->resolveTenantId();
 
-        $this->assertEquals('tenant-from-second', $tenantId);
+        $this->assertEquals(2, $tenantId);
     }
 
     public function testChainResolverUsesDefaultResolversWhenNoneProvided(): void

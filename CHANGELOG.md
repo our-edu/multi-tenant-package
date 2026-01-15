@@ -8,17 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
-- **BREAKING:** `TenantResolver::resolveTenant()` changed to `resolveTenantId()` returning `?string` instead of `?Model`
-- **BREAKING:** `TenantContext` now stores `tenant_id` string instead of tenant Model
+- **BREAKING:** `TenantResolver::resolveTenant()` changed to `resolveTenantId()` returning `?int` instead of `?Model`
+- **BREAKING:** `TenantContext` now stores `tenant_id` as `int` instead of tenant Model
 - **BREAKING:** Removed `getTenant()`, `setTenant()`, `setTenantById()` methods from TenantContext
-- **BREAKING:** Removed `runWithTenant()` and `runWithTenantId()` - use `runForTenant(string $tenantId, callable)` instead
+- **BREAKING:** Removed `runWithTenant()` and `runWithTenantId()` - use `runForTenant(int $tenantId, callable)` instead
 
 ### Added
 - `UserSessionTenantResolver` - Gets tenant_id from `getSession()` helper function
 - `DomainTenantResolver` - Gets tenant_id by querying tenant table by domain
 - `ChainTenantResolver` - Chains multiple resolvers together (default)
-- `setTenantId(?string $tenantId)` method on TenantContext
-- `runForTenant(string $tenantId, callable $callback)` method on TenantContext
+- `setTenantId(?int $tenantId)` method on TenantContext
+- `runForTenant(int $tenantId, callable $callback)` method on TenantContext
 
 ### Removed
 - Removed planned TenantAwareJob, TenantAwareCommand, TenantMessage, SetTenantForJob (use `setTenantId()` directly)

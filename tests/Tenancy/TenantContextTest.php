@@ -46,23 +46,23 @@ class TenantContextTest extends TestCase
         $this->resolver
             ->shouldReceive('resolveTenantId')
             ->once()
-            ->andReturn('test-uuid-123');
+            ->andReturn(123);
 
         $tenantId = $this->context->getTenantId();
 
-        $this->assertEquals('test-uuid-123', $tenantId);
+        $this->assertEquals(123, $tenantId);
     }
 
     public function testSetTenantIdManually(): void
     {
-        $this->context->setTenantId('manual-uuid');
+        $this->context->setTenantId(456);
 
-        $this->assertEquals('manual-uuid', $this->context->getTenantId());
+        $this->assertEquals(456, $this->context->getTenantId());
     }
 
     public function testSetTenantIdToNull(): void
     {
-        $this->context->setTenantId('temp-uuid');
+        $this->context->setTenantId(789);
 
         $this->context->setTenantId(null);
 
@@ -81,14 +81,14 @@ class TenantContextTest extends TestCase
 
     public function testHasTenantReturnsTrueWhenTenantIdSet(): void
     {
-        $this->context->setTenantId('has-tenant-uuid');
+        $this->context->setTenantId(1);
 
         $this->assertTrue($this->context->hasTenant());
     }
 
     public function testClearTenantContext(): void
     {
-        $this->context->setTenantId('clear-uuid');
+        $this->context->setTenantId(2);
 
         $this->assertTrue($this->context->hasTenant());
 
@@ -107,7 +107,7 @@ class TenantContextTest extends TestCase
         $this->resolver
             ->shouldReceive('resolveTenantId')
             ->once()
-            ->andReturn('lazy-uuid');
+            ->andReturn(100);
 
         // First call should resolve
         $tenantId1 = $this->context->getTenantId();
@@ -120,28 +120,28 @@ class TenantContextTest extends TestCase
 
     public function testRunForTenantExecutesCallbackWithTenantContext(): void
     {
-        $this->context->setTenantId('original-tenant');
+        $this->context->setTenantId(1);
 
-        $result = $this->context->runForTenant('temporary-tenant', function () {
+        $result = $this->context->runForTenant(2, function () {
             return $this->context->getTenantId();
         });
 
-        $this->assertEquals('temporary-tenant', $result);
-        $this->assertEquals('original-tenant', $this->context->getTenantId());
+        $this->assertEquals(2, $result);
+        $this->assertEquals(1, $this->context->getTenantId());
     }
 
     public function testRunForTenantRestoresContextAfterException(): void
     {
-        $this->context->setTenantId('original-tenant');
+        $this->context->setTenantId(1);
 
         try {
-            $this->context->runForTenant('temporary-tenant', function () {
+            $this->context->runForTenant(2, function () {
                 throw new \RuntimeException('Test exception');
             });
         } catch (\RuntimeException) {
             // Expected
         }
 
-        $this->assertEquals('original-tenant', $this->context->getTenantId());
+        $this->assertEquals(1, $this->context->getTenantId());
     }
 }

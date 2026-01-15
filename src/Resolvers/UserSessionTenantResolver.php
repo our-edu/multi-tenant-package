@@ -23,14 +23,14 @@ use Throwable;
  * 1. If running in console (and not unit tests) → skip
  * 2. Call getSession() helper to get the session model
  * 3. Read tenant_id column from the session model
- * 4. Return the tenant_id string
+ * 4. Return the tenant_id as integer
  */
 class UserSessionTenantResolver implements TenantResolver
 {
     /**
      * Resolve the current tenant ID from the session.
      */
-    public function resolveTenantId(): ?string
+    public function resolveTenantId(): ?int
     {
         // Skip resolution in console (except when running tests)
         if (App::runningInConsole() && ! App::runningUnitTests()) {
@@ -72,15 +72,15 @@ class UserSessionTenantResolver implements TenantResolver
      * Get tenant_id from the session.
      *
      * @param object $session The session object
-     * @return string|null The tenant ID
+     * @return int|null The tenant ID
      */
-    protected function getTenantIdFromSession(object $session): ?string
+    protected function getTenantIdFromSession(object $session): ?int
     {
         $tenantColumn = $this->getTenantColumn();
 
         $tenantId = $session->{$tenantColumn} ?? null;
 
-        return $tenantId !== null ? (string) $tenantId : null;
+        return $tenantId !== null ? (int) $tenantId : null;
     }
 
     /**
@@ -92,4 +92,3 @@ class UserSessionTenantResolver implements TenantResolver
             ?? config('multi-tenant.tenant_column', 'tenant_id'));
     }
 }
-

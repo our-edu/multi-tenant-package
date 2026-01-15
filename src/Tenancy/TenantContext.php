@@ -24,7 +24,7 @@ use Ouredu\MultiTenant\Contracts\TenantResolver;
  */
 class TenantContext
 {
-    private ?string $tenantId = null;
+    private ?int $tenantId = null;
 
     private bool $resolved = false;
 
@@ -36,7 +36,7 @@ class TenantContext
     /**
      * Get the current tenant ID (or null if not resolved).
      */
-    public function getTenantId(): ?string
+    public function getTenantId(): ?int
     {
         if (! $this->resolved) {
             $this->resolve();
@@ -48,7 +48,7 @@ class TenantContext
     /**
      * Manually set the tenant ID (useful for tests, CLI, jobs, or messages).
      */
-    public function setTenantId(?string $tenantId): void
+    public function setTenantId(?int $tenantId): void
     {
         $this->tenantId = $tenantId;
         $this->resolved = true;
@@ -75,11 +75,11 @@ class TenantContext
      * Run a callback within a specific tenant context.
      *
      * @template TReturn
-     * @param string $tenantId
+     * @param int $tenantId
      * @param callable(): TReturn $callback
      * @return TReturn
      */
-    public function runForTenant(string $tenantId, callable $callback): mixed
+    public function runForTenant(int $tenantId, callable $callback): mixed
     {
         $previousTenantId = $this->tenantId;
         $previousResolved = $this->resolved;

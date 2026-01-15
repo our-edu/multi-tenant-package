@@ -25,7 +25,7 @@ interface TenantResolver
     /**
      * Resolve the current tenant ID.
      *
-     * @return string|null The tenant ID or null if not resolved
+     * @return int|null The tenant ID or null if not resolved
      */
-    public function resolveTenantId(): ?string;
+    public function resolveTenantId(): ?int;
 }

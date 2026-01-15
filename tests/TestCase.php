@@ -52,7 +52,7 @@ abstract class TestCase extends OrchestraTestCase
         // Bind a default resolver that returns null
         $app->bind(TenantResolver::class, function () {
             return new class () implements TenantResolver {
-                public function resolveTenantId(): ?string
+                public function resolveTenantId(): ?int
                 {
                     return null;
                 }

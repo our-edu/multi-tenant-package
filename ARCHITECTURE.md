@@ -116,7 +116,7 @@ use Ouredu\MultiTenant\Tenancy\TenantContext;
 $context = app(TenantContext::class);
 
 // Get current tenant ID
-$tenantId = $context->getTenantId();  // Returns string|null
+$tenantId = $context->getTenantId();  // Returns int|null
 
 // Check if tenant is set
 if ($context->hasTenant()) {
@@ -124,10 +124,10 @@ if ($context->hasTenant()) {
 }
 
 // Manually set tenant ID (testing/jobs/commands)
-$context->setTenantId('tenant-uuid');
+$context->setTenantId(1);
 
 // Run code in tenant context
-$context->runForTenant('tenant-uuid', function () {
+$context->runForTenant(1, function () {
     // Code runs with this tenant
 });
 
@@ -151,7 +151,7 @@ Global Eloquent scope that automatically filters queries by tenant.
 **Automatic Filtering:**
 
 ```php
-// Automatically adds: WHERE tenant_id = 'current-tenant-uuid'
+// Automatically adds: WHERE tenant_id = 1
 $users = User::all();
 $payments = Payment::where('status', 'paid')->get();
 ```
@@ -163,7 +163,7 @@ $payments = Payment::where('status', 'paid')->get();
 $allUsers = User::withoutTenantScope()->get();
 
 // Query specific tenant
-$users = User::forTenant('specific-tenant-uuid')->get();
+$users = User::forTenant(5)->get();
 ```
 
 **Model Opt-Out:**
@@ -191,7 +191,7 @@ use Ouredu\MultiTenant\Contracts\TenantResolver;
 
 class CustomTenantResolver implements TenantResolver
 {
-    public function resolveTenantId(): ?string
+    public function resolveTenantId(): ?int
     {
         $session = getSession(); // Your session helper
         
@@ -427,7 +427,7 @@ class YourModel extends Model
 ```php
 // Migration
 Schema::table('your_table', function (Blueprint $table) {
-    $table->uuid('tenant_id')->nullable()->index();
+    $table->unsignedBigInteger('tenant_id')->nullable()->index();
 });
 ```
 
@@ -473,8 +473,7 @@ $users = User::withoutTenantScope()->where('id', 1)->first();
 // Always set tenant in tests
 public function testFeature(): void
 {
-    $tenant = Tenant::factory()->create();
-    app(TenantContext::class)->setTenant($tenant);
+    app(TenantContext::class)->setTenantId(1);
     
     // Test code runs in tenant context
 }
@@ -494,13 +493,10 @@ class TenantIsolationTest extends TestCase
     public function test_queries_are_scoped_to_tenant(): void
     {
         // Arrange
-        $tenant1 = Tenant::factory()->create();
-        $tenant2 = Tenant::factory()->create();
-        
-        app(TenantContext::class)->setTenant($tenant1);
+        app(TenantContext::class)->setTenantId(1);
         $record1 = Model::factory()->create();
         
-        app(TenantContext::class)->setTenant($tenant2);
+        app(TenantContext::class)->setTenantId(2);
         $record2 = Model::factory()->create();
         
         // Act
@@ -514,13 +510,10 @@ class TenantIsolationTest extends TestCase
     public function test_cross_tenant_query_works(): void
     {
         // Arrange
-        $tenant1 = Tenant::factory()->create();
-        $tenant2 = Tenant::factory()->create();
-        
-        app(TenantContext::class)->setTenant($tenant1);
+        app(TenantContext::class)->setTenantId(1);
         Model::factory()->create();
         
-        app(TenantContext::class)->setTenant($tenant2);
+        app(TenantContext::class)->setTenantId(2);
         Model::factory()->create();
         
         // Act
@@ -577,7 +570,7 @@ dump($context->getTenantId());
 ```php
 class YourJob implements ShouldQueue
 {
-    public ?string $tenantId = null;
+    public ?int $tenantId = null;
 
     public function __construct()
     {

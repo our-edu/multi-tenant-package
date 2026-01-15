@@ -22,7 +22,7 @@ class TenantResolverTest extends TestCase
     public function testTenantResolverCanBeImplemented(): void
     {
         $resolver = new class () implements TenantResolver {
-            public function resolveTenantId(): ?string
+            public function resolveTenantId(): ?int
             {
                 return null;
             }
@@ -34,7 +34,7 @@ class TenantResolverTest extends TestCase
     public function testTenantResolverReturnsNullForNoTenant(): void
     {
         $resolver = new class () implements TenantResolver {
-            public function resolveTenantId(): ?string
+            public function resolveTenantId(): ?int
             {
                 return null;
             }
@@ -48,14 +48,14 @@ class TenantResolverTest extends TestCase
     public function testTenantResolverReturnsTenantId(): void
     {
         $resolver = new class () implements TenantResolver {
-            public function resolveTenantId(): ?string
+            public function resolveTenantId(): ?int
             {
-                return 'test-tenant-uuid-123';
+                return 123;
             }
         };
 
         $result = $resolver->resolveTenantId();
 
-        $this->assertEquals('test-tenant-uuid-123', $result);
+        $this->assertEquals(123, $result);
     }
 }

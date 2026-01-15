@@ -39,7 +39,7 @@ class ChainTenantResolver implements TenantResolver
     /**
      * Resolve the current tenant ID by trying each resolver in order.
      */
-    public function resolveTenantId(): ?string
+    public function resolveTenantId(): ?int
     {
         foreach ($this->resolvers as $resolver) {
             $tenantId = $resolver->resolveTenantId();

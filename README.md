@@ -61,7 +61,7 @@ use Ouredu\MultiTenant\Contracts\TenantResolver;
 
 class AppTenantResolver implements TenantResolver
 {
-    public function resolveTenantId(): ?string
+    public function resolveTenantId(): ?int
     {
         // Resolve from authenticated user
         return auth()->user()?->tenant_id;
@@ -70,7 +70,7 @@ class AppTenantResolver implements TenantResolver
         // return session('tenant_id');
         
         // Or from header
-        // return request()->header('X-Tenant-ID');
+        // return (int) request()->header('X-Tenant-ID');
     }
 }
 ```
@@ -204,7 +204,7 @@ For jobs that need tenant context, set the tenant ID in the job:
 ```php
 class ProcessInvoice implements ShouldQueue
 {
-    public ?string $tenantId = null;
+    public ?int $tenantId = null;
 
     public function __construct(public Invoice $invoice)
     {
@@ -237,7 +237,7 @@ class GenerateReports extends Command
         $tenantId = $this->option('tenant');
         
         if ($tenantId) {
-            app(TenantContext::class)->setTenantId($tenantId);
+            app(TenantContext::class)->setTenantId((int) $tenantId);
         }
         
         // Generate reports...
@@ -253,18 +253,18 @@ class GenerateReports extends Command
 
 | Method | Description |
 |--------|-------------|
-| `getTenantId(): ?string` | Get the current tenant ID |
+| `getTenantId(): ?int` | Get the current tenant ID |
 | `hasTenant(): bool` | Check if a tenant is set |
-| `setTenantId(?string $tenantId): void` | Manually set the tenant ID |
+| `setTenantId(?int $tenantId): void` | Manually set the tenant ID |
 | `clear(): void` | Clear the tenant context |
-| `runForTenant(string $tenantId, callable $callback): mixed` | Run callback with specific tenant |
+| `runForTenant(int $tenantId, callable $callback): mixed` | Run callback with specific tenant |
 
 ### HasTenant Trait
 
 | Method | Description |
 |--------|-------------|
 | `tenant(): BelongsTo` | Relationship to tenant model |
-| `scopeForTenant($query, string $id): Builder` | Scope to specific tenant |
+| `scopeForTenant($query, int $id): Builder` | Scope to specific tenant |
 | `getTenantColumn(): string` | Get tenant column name (override) |
 
 ## Testing

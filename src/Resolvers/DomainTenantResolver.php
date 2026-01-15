@@ -24,14 +24,14 @@ use Throwable;
  * 1. If running in console (and not unit tests) → skip
  * 2. Get the domain from the current request
  * 3. Query tenant table by domain column
- * 4. Return the tenant ID (primary key)
+ * 4. Return the tenant ID (primary key) as integer
  */
 class DomainTenantResolver implements TenantResolver
 {
     /**
      * Resolve the current tenant ID from the request domain.
      */
-    public function resolveTenantId(): ?string
+    public function resolveTenantId(): ?int
     {
         // Skip resolution in console (except when running tests)
         if (App::runningInConsole() && ! App::runningUnitTests()) {
@@ -56,7 +56,7 @@ class DomainTenantResolver implements TenantResolver
     /**
      * Query tenant table by domain and return the tenant ID.
      */
-    protected function resolveTenantIdByDomain(string $domain): ?string
+    protected function resolveTenantIdByDomain(string $domain): ?int
     {
         $tenantModel = $this->getTenantModel();
 
@@ -71,7 +71,7 @@ class DomainTenantResolver implements TenantResolver
                 ->where($domainColumn, $domain)
                 ->value('id');
 
-            return $tenantId !== null ? (string) $tenantId : null;
+            return $tenantId !== null ? (int) $tenantId : null;
         } catch (Throwable) {
             return null;
         }
