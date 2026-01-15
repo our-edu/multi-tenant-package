@@ -207,6 +207,50 @@ class SessionTenantResolver implements TenantResolver
 }
 ```
 
+#### Optimized Resolution via Session Relationship
+
+The built-in `UserSessionTenantResolver` can now load the tenant directly from the session's relationship, eliminating the need for a separate query. To enable this optimization:
+
+1. **Add a tenant relationship to your Session model:**
+
+```php
+class UserSession extends Model
+{
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class, 'tenant_id');
+    }
+}
+```
+
+2. **Eager-load the tenant in your `getSession()` helper:**
+
+```php
+if (!function_exists('getSession')) {
+    function getSession($key = null, $default = null)
+    {
+        $session = app(SessionService::class)->getSession(); // Should eager-load 'tenant'
+
+        if ($key) {
+            return $session?->{$key} ?? $default;
+        }
+
+        return $session;
+    }
+}
+```
+
+3. **(Optional) Configure the relationship name in config:**
+
+```php
+// config/multi-tenant.php
+'session' => [
+    'tenant_relation' => 'tenant', // default
+],
+```
+
+When the session model has an eager-loaded tenant relationship, the resolver will use it directly instead of making a separate query.
+
 ---
 
 ### 4. HasTenant Trait

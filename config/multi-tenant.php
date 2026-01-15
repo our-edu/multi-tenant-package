@@ -108,6 +108,25 @@ return [
         |
         */
         'tenant_column' => env('MULTI_TENANT_SESSION_TENANT_COLUMN'),
+
+        /*
+        |--------------------------------------------------------------------------
+        | Tenant Relationship Name
+        |--------------------------------------------------------------------------
+        |
+        | The relationship method name on the session model that returns the
+        | tenant. When this relationship exists (and is optionally eager-loaded
+        | via getSession()), the package will use it directly instead of making
+        | a separate query to fetch the tenant by ID.
+        |
+        | This reduces query count when your session model has:
+        |   public function tenant(): BelongsTo
+        |   {
+        |       return $this->belongsTo(Tenant::class, 'tenant_id');
+        |   }
+        |
+        */
+        'tenant_relation' => env('MULTI_TENANT_SESSION_TENANT_RELATION', 'tenant'),
     ],
 
     /*

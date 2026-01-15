@@ -49,7 +49,14 @@ class UserSessionTenantResolver implements TenantResolver
             return null;
         }
 
-        // Get tenant_id from session
+        // Try to get tenant from session relationship first (reduces query count)
+        $tenant = $this->getTenantFromSessionRelationship($session);
+
+        if ($tenant) {
+            return $tenant;
+        }
+
+        // Fall back to resolving tenant by ID from session column
         $tenantId = $this->getTenantIdFromSession($session);
 
         if (! $tenantId) {
@@ -58,6 +65,36 @@ class UserSessionTenantResolver implements TenantResolver
 
         // Resolve tenant model
         return $this->resolveTenantById($tenantId);
+    }
+
+    /**
+     * Try to get tenant from session's relationship if available.
+     * This reduces query count when the session model has a tenant relationship.
+     */
+    protected function getTenantFromSessionRelationship(Model $session): ?Model
+    {
+        $relationName = $this->getSessionTenantRelation();
+
+        // Check if the session model has the tenant relationship method
+        if (! method_exists($session, $relationName)) {
+            return null;
+        }
+
+        try {
+            // Check if tenant is already eager-loaded to avoid extra query
+            if ($session->relationLoaded($relationName)) {
+                $tenant = $session->getRelation($relationName);
+
+                return $tenant instanceof Model ? $tenant : null;
+            }
+
+            // Load the relationship
+            $tenant = $session->{$relationName};
+
+            return $tenant instanceof Model ? $tenant : null;
+        } catch (Throwable) {
+            return null;
+        }
     }
 
     /**
@@ -204,6 +241,15 @@ class UserSessionTenantResolver implements TenantResolver
         // Prefer explicit session.tenant_column, otherwise fall back to global tenant_column
         return (string) (config('multi-tenant.session.tenant_column')
             ?? config('multi-tenant.tenant_column', 'tenant_id'));
+    }
+
+    /**
+     * Get the tenant relationship name on the session model.
+     * Used to load tenant from session relationship instead of separate query.
+     */
+    protected function getSessionTenantRelation(): string
+    {
+        return (string) config('multi-tenant.session.tenant_relation', 'tenant');
     }
 
     /**
