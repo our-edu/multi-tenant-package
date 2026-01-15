@@ -36,10 +36,24 @@ return [
     |--------------------------------------------------------------------------
     |
     | Configuration for UserSessionTenantResolver.
-    | This resolver uses the getSession() helper to get tenant_id.
+    | This resolver uses a helper function to get the session with tenant_id.
     |
     */
     'session' => [
+        /*
+        |--------------------------------------------------------------------------
+        | Session Helper Function
+        |--------------------------------------------------------------------------
+        |
+        | The name of the global helper function that returns the current session
+        | object with tenant_id property. This function should return an object
+        | that has the tenant_id column/property.
+        |
+        | Example: 'getSession' will call getSession() to get the session.
+        |
+        */
+        'helper' => env('MULTI_TENANT_SESSION_HELPER', 'getSession'),
+
         /*
         |--------------------------------------------------------------------------
         | Tenant Column in Session

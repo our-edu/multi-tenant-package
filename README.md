@@ -41,9 +41,15 @@ The package will auto-register its service provider and automatically publish th
 
 The package includes built-in resolvers that work with a `ChainTenantResolver`:
 
-**UserSessionTenantResolver** - Gets `tenant_id` from your `getSession()` helper:
+**UserSessionTenantResolver** - Gets `tenant_id` from a configurable helper function (default: `getSession()`):
 ```php
-// Your getSession() helper should return an object with tenant_id property
+// Configure the helper function name in config/multi-tenant.php
+'session' => [
+    'helper' => 'getSession',  // Your helper function name
+    'tenant_column' => 'tenant_id',
+],
+
+// Your helper function should return an object with tenant_id property
 function getSession() {
     return app(SessionService::class)->getSession(); // Has tenant_id property
 }
@@ -118,7 +124,8 @@ return [
     
     // Session configuration (for UserSessionTenantResolver)
     'session' => [
-        'tenant_column' => null,  // Defaults to tenant_column
+        'helper' => 'getSession',     // Helper function name to get session
+        'tenant_column' => 'tenant_id', // Tenant column on session object
     ],
     
     // Domain configuration (for DomainTenantResolver)

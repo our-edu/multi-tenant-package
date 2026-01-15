@@ -16,12 +16,12 @@ use Throwable;
 /**
  * UserSessionTenantResolver
  *
- * Resolves the current tenant ID from a shared UserSession using the
- * getSession() helper function that returns a session model with tenant_id.
+ * Resolves the current tenant ID from a shared UserSession using a
+ * configurable helper function that returns a session model with tenant_id.
  *
  * Resolution flow:
  * 1. If running in console (and not unit tests) → skip
- * 2. Call getSession() helper to get the session model
+ * 2. Call configured session helper to get the session model
  * 3. Read tenant_id column from the session model
  * 4. Return the tenant_id as integer
  */
@@ -49,23 +49,33 @@ class UserSessionTenantResolver implements TenantResolver
     }
 
     /**
-     * Get session using the getSession() helper function.
+     * Get session using the configured helper function.
      *
      * @return object|null The session object/model or null
      */
     protected function getSessionFromHelper(): ?object
     {
-        if (! function_exists('getSession')) {
+        $helperName = $this->getSessionHelperName();
+
+        if (! function_exists($helperName)) {
             return null;
         }
 
         try {
-            $session = getSession();
+            $session = $helperName();
 
             return is_object($session) ? $session : null;
         } catch (Throwable) {
             return null;
         }
+    }
+
+    /**
+     * Get the session helper function name from config.
+     */
+    protected function getSessionHelperName(): string
+    {
+        return (string) config('multi-tenant.session.helper', 'getSession');
     }
 
     /**

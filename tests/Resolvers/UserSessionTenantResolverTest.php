@@ -58,5 +58,31 @@ class UserSessionTenantResolverTest extends TestCase
 
         $this->assertEquals('custom_tenant_id', $resolver->exposedGetTenantColumn());
     }
+
+    public function testGetSessionHelperNameDefaultsToGetSession(): void
+    {
+        $resolver = new class () extends UserSessionTenantResolver {
+            public function exposedGetSessionHelperName(): string
+            {
+                return $this->getSessionHelperName();
+            }
+        };
+
+        $this->assertEquals('getSession', $resolver->exposedGetSessionHelperName());
+    }
+
+    public function testGetSessionHelperNameUsesConfig(): void
+    {
+        config(['multi-tenant.session.helper' => 'customSessionHelper']);
+
+        $resolver = new class () extends UserSessionTenantResolver {
+            public function exposedGetSessionHelperName(): string
+            {
+                return $this->getSessionHelperName();
+            }
+        };
+
+        $this->assertEquals('customSessionHelper', $resolver->exposedGetSessionHelperName());
+    }
 }
 

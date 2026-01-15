@@ -206,9 +206,15 @@ class CustomTenantResolver implements TenantResolver
 
 #### Built-in Resolvers
 
-**UserSessionTenantResolver** - Gets tenant_id from your `getSession()` helper:
+**UserSessionTenantResolver** - Gets tenant_id from a configurable helper function:
 ```php
-// Reads tenant_id column from session object returned by getSession()
+// Configure in config/multi-tenant.php
+'session' => [
+    'helper' => 'getSession',  // Your helper function name
+    'tenant_column' => 'tenant_id',
+],
+
+// Reads tenant_id from session object returned by the helper
 $tenantId = getSession()?->tenant_id;
 ```
 
@@ -615,7 +621,8 @@ return [
     
     // Session configuration (UserSessionTenantResolver)
     'session' => [
-        'tenant_column' => null,  // Defaults to tenant_column
+        'helper' => 'getSession',     // Helper function name
+        'tenant_column' => 'tenant_id', // Tenant column on session object
     ],
     
     // Domain configuration (DomainTenantResolver)
