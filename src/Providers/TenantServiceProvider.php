@@ -20,11 +20,8 @@ class TenantServiceProvider extends ServiceProvider
     {
         $this->mergeConfigFrom(__DIR__ . '/../../config/multi-tenant.php', 'multi-tenant');
 
-        $this->app->singleton(TenantContext::class, function (Application $app): TenantContext {
-            /** @var TenantResolver $resolver */
-            $resolver = $app->make(TenantResolver::class);
-
-            return new TenantContext($resolver);
+        $this->app->scoped(TenantContext::class, function (Application $app): TenantContext {
+            return new TenantContext($app->make(TenantResolver::class));
         });
     }
 
