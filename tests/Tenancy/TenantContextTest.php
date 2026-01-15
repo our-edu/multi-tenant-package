@@ -9,7 +9,6 @@ declare(strict_types=1);
 
 namespace Tests\Tenancy;
 
-use Illuminate\Database\Eloquent\Model;
 use Mockery;
 use Mockery\MockInterface;
 use Ouredu\MultiTenant\Contracts\TenantResolver;
@@ -30,64 +29,10 @@ class TenantContextTest extends TestCase
         $this->context = new TenantContext($this->resolver);
     }
 
-    public function testGetTenantReturnsNullWhenNotResolved(): void
+    public function testGetTenantIdReturnsNullWhenNotResolved(): void
     {
         $this->resolver
-            ->shouldReceive('resolveTenant')
-            ->once()
-            ->andReturnNull();
-
-        $tenant = $this->context->getTenant();
-
-        $this->assertNull($tenant);
-    }
-
-    public function testGetTenantReturnsTenantModel(): void
-    {
-        $tenantModel = $this->createTenantMock('test-uuid-123');
-
-        $this->resolver
-            ->shouldReceive('resolveTenant')
-            ->once()
-            ->andReturn($tenantModel);
-
-        $tenant = $this->context->getTenant();
-
-        $this->assertSame($tenantModel, $tenant);
-    }
-
-    public function testGetTenantIdReturnsUuidWhenAvailable(): void
-    {
-        $tenantModel = $this->createTenantMock('test-uuid-456');
-
-        $this->resolver
-            ->shouldReceive('resolveTenant')
-            ->once()
-            ->andReturn($tenantModel);
-
-        $tenantId = $this->context->getTenantId();
-
-        $this->assertEquals('test-uuid-456', $tenantId);
-    }
-
-    public function testGetTenantIdReturnsPrimaryKeyWhenUuidNotAvailable(): void
-    {
-        $tenantModel = $this->createTenantMock(null, 789);
-
-        $this->resolver
-            ->shouldReceive('resolveTenant')
-            ->once()
-            ->andReturn($tenantModel);
-
-        $tenantId = $this->context->getTenantId();
-
-        $this->assertEquals('789', $tenantId);
-    }
-
-    public function testGetTenantIdReturnsNullWhenNoTenant(): void
-    {
-        $this->resolver
-            ->shouldReceive('resolveTenant')
+            ->shouldReceive('resolveTenantId')
             ->once()
             ->andReturnNull();
 
@@ -96,55 +41,61 @@ class TenantContextTest extends TestCase
         $this->assertNull($tenantId);
     }
 
-    public function testSetTenantManually(): void
+    public function testGetTenantIdReturnsTenantId(): void
     {
-        $tenantModel = $this->createTenantMock('manual-uuid');
+        $this->resolver
+            ->shouldReceive('resolveTenantId')
+            ->once()
+            ->andReturn('test-uuid-123');
 
-        $this->context->setTenant($tenantModel);
+        $tenantId = $this->context->getTenantId();
 
-        $this->assertSame($tenantModel, $this->context->getTenant());
+        $this->assertEquals('test-uuid-123', $tenantId);
+    }
+
+    public function testSetTenantIdManually(): void
+    {
+        $this->context->setTenantId('manual-uuid');
+
         $this->assertEquals('manual-uuid', $this->context->getTenantId());
     }
 
-    public function testSetTenantToNull(): void
+    public function testSetTenantIdToNull(): void
     {
-        $tenantModel = $this->createTenantMock('temp-uuid');
-        $this->context->setTenant($tenantModel);
+        $this->context->setTenantId('temp-uuid');
 
-        $this->context->setTenant(null);
+        $this->context->setTenantId(null);
 
-        $this->assertNull($this->context->getTenant());
+        $this->assertNull($this->context->getTenantId());
     }
 
     public function testHasTenantReturnsFalseWhenNoTenant(): void
     {
         $this->resolver
-            ->shouldReceive('resolveTenant')
+            ->shouldReceive('resolveTenantId')
             ->once()
             ->andReturnNull();
 
         $this->assertFalse($this->context->hasTenant());
     }
 
-    public function testHasTenantReturnsTrueWhenTenantSet(): void
+    public function testHasTenantReturnsTrueWhenTenantIdSet(): void
     {
-        $tenantModel = $this->createTenantMock('has-tenant-uuid');
-        $this->context->setTenant($tenantModel);
+        $this->context->setTenantId('has-tenant-uuid');
 
         $this->assertTrue($this->context->hasTenant());
     }
 
     public function testClearTenantContext(): void
     {
-        $tenantModel = $this->createTenantMock('clear-uuid');
-        $this->context->setTenant($tenantModel);
+        $this->context->setTenantId('clear-uuid');
 
         $this->assertTrue($this->context->hasTenant());
 
         $this->context->clear();
 
         $this->resolver
-            ->shouldReceive('resolveTenant')
+            ->shouldReceive('resolveTenantId')
             ->once()
             ->andReturnNull();
 
@@ -153,33 +104,44 @@ class TenantContextTest extends TestCase
 
     public function testLazyLoadingTenantResolver(): void
     {
-        $tenantModel = $this->createTenantMock('lazy-uuid');
-
         $this->resolver
-            ->shouldReceive('resolveTenant')
+            ->shouldReceive('resolveTenantId')
             ->once()
-            ->andReturn($tenantModel);
+            ->andReturn('lazy-uuid');
 
         // First call should resolve
-        $tenant1 = $this->context->getTenant();
+        $tenantId1 = $this->context->getTenantId();
 
         // Second call should use cache (resolver should not be called again)
-        $tenant2 = $this->context->getTenant();
+        $tenantId2 = $this->context->getTenantId();
 
-        $this->assertSame($tenant1, $tenant2);
+        $this->assertSame($tenantId1, $tenantId2);
     }
 
-    /**
-     * Create a mock tenant model with given uuid and/or key
-     */
-    private function createTenantMock(?string $uuid, int $key = 1): MockInterface
+    public function testRunForTenantExecutesCallbackWithTenantContext(): void
     {
-        $mock = Mockery::mock(Model::class)->makePartial();
-        $mock->shouldReceive('getKey')->andReturn($key);
+        $this->context->setTenantId('original-tenant');
 
-        // Set uuid as a real property on the mock
-        $mock->forceFill(['uuid' => $uuid]);
+        $result = $this->context->runForTenant('temporary-tenant', function () {
+            return $this->context->getTenantId();
+        });
 
-        return $mock;
+        $this->assertEquals('temporary-tenant', $result);
+        $this->assertEquals('original-tenant', $this->context->getTenantId());
+    }
+
+    public function testRunForTenantRestoresContextAfterException(): void
+    {
+        $this->context->setTenantId('original-tenant');
+
+        try {
+            $this->context->runForTenant('temporary-tenant', function () {
+                throw new \RuntimeException('Test exception');
+            });
+        } catch (\RuntimeException) {
+            // Expected
+        }
+
+        $this->assertEquals('original-tenant', $this->context->getTenantId());
     }
 }

@@ -40,7 +40,7 @@ class TenantMiddlewareTest extends TestCase
         };
 
         $this->context
-            ->shouldReceive('getTenant')
+            ->shouldReceive('getTenantId')
             ->once()
             ->andReturn(null);
 
@@ -61,7 +61,7 @@ class TenantMiddlewareTest extends TestCase
         };
 
         $this->context
-            ->shouldReceive('getTenant')
+            ->shouldReceive('getTenantId')
             ->andReturn(null);
 
         $response = $this->middleware->handle($request, $next);
@@ -78,7 +78,7 @@ class TenantMiddlewareTest extends TestCase
         };
 
         $this->context
-            ->shouldReceive('getTenant')
+            ->shouldReceive('getTenantId')
             ->once()
             ->andReturnNull();
 

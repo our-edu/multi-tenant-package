@@ -28,7 +28,7 @@ class TenantMiddleware
         $context = app(TenantContext::class);
 
         // Trigger lazy resolution
-        $context->getTenant();
+        $context->getTenantId();
 
         return $next($request);
     }

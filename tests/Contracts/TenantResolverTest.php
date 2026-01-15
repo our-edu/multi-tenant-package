@@ -9,8 +9,6 @@ declare(strict_types=1);
 
 namespace Tests\Contracts;
 
-use Illuminate\Database\Eloquent\Model;
-use Mockery;
 use Ouredu\MultiTenant\Contracts\TenantResolver;
 use Tests\TestCase;
 
@@ -24,7 +22,7 @@ class TenantResolverTest extends TestCase
     public function testTenantResolverCanBeImplemented(): void
     {
         $resolver = new class () implements TenantResolver {
-            public function resolveTenant(): ?Model
+            public function resolveTenantId(): ?string
             {
                 return null;
             }
@@ -36,37 +34,28 @@ class TenantResolverTest extends TestCase
     public function testTenantResolverReturnsNullForNoTenant(): void
     {
         $resolver = new class () implements TenantResolver {
-            public function resolveTenant(): ?Model
+            public function resolveTenantId(): ?string
             {
                 return null;
             }
         };
 
-        $result = $resolver->resolveTenant();
+        $result = $resolver->resolveTenantId();
 
         $this->assertNull($result);
     }
 
-    public function testTenantResolverReturnsModel(): void
+    public function testTenantResolverReturnsTenantId(): void
     {
-        $tenantModel = Mockery::mock(Model::class);
-
-        $resolver = new class ($tenantModel) implements TenantResolver {
-            private Model $tenant;
-
-            public function __construct(Model $tenant)
+        $resolver = new class () implements TenantResolver {
+            public function resolveTenantId(): ?string
             {
-                $this->tenant = $tenant;
-            }
-
-            public function resolveTenant(): ?Model
-            {
-                return $this->tenant;
+                return 'test-tenant-uuid-123';
             }
         };
 
-        $result = $resolver->resolveTenant();
+        $result = $resolver->resolveTenantId();
 
-        $this->assertSame($tenantModel, $result);
+        $this->assertEquals('test-tenant-uuid-123', $result);
     }
 }

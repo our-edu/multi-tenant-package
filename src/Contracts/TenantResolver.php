@@ -9,25 +9,23 @@ declare(strict_types=1);
 
 namespace Ouredu\MultiTenant\Contracts;
 
-use Illuminate\Database\Eloquent\Model;
-
 /**
  * TenantResolver
  *
  * Each service using this package should bind an implementation of this
- * interface that knows how to resolve the current tenant for that service.
+ * interface that knows how to resolve the current tenant ID for that service.
  *
  * Examples:
- * - Resolve from UserSession (session header / auth user)
- * - Resolve from request domain / subdomain
- * - Resolve from CLI arguments (for commands)
+ * - Resolve tenant_id from UserSession (session helper)
+ * - Resolve tenant id from request domain / subdomain
+ * - Resolve tenant_id from CLI arguments (for commands)
  */
 interface TenantResolver
 {
     /**
-     * Resolve the current tenant model.
+     * Resolve the current tenant ID.
      *
-     * @return Model|null
+     * @return string|null The tenant ID or null if not resolved
      */
-    public function resolveTenant(): ?Model;
+    public function resolveTenantId(): ?string;
 }

@@ -89,15 +89,14 @@ This package implements a **Shared Database, Shared Schema** pattern with **Row-
 
 ### Resolution Strategies
 
-The package is **strategy-agnostic**. Each service implements `TenantResolver` based on its needs:
+The package includes built-in resolvers and supports custom implementations:
 
-| Strategy | Use Case | Example |
+| Strategy | Resolver | Example |
 |----------|----------|---------|
-| **Session** | Web applications | `UserSession.tenant_id` |
-| **Header** | API requests | `X-Tenant-ID` header |
-| **Domain** | Subdomain routing | `tenant1.example.com` |
-| **CLI** | Artisan commands | `--tenant=uuid` option |
-| **Message** | Queue/Event consumers | Tenant ID in message payload |
+| **Session** | `UserSessionTenantResolver` | `getSession()->tenant_id` |
+| **Domain** | `DomainTenantResolver` | Query tenant by `domain` column |
+| **Chain** | `ChainTenantResolver` | Tries session first, then domain |
+| **Custom** | Your implementation | Header, CLI args, message payload |
 
 ---
 
@@ -105,7 +104,7 @@ The package is **strategy-agnostic**. Each service implements `TenantResolver` b
 
 ### 1. TenantContext
 
-The central service managing tenant state throughout the request lifecycle.
+The central service managing tenant ID state throughout the request lifecycle.
 
 **Location:** `src/Tenancy/TenantContext.php`
 
@@ -116,8 +115,7 @@ use Ouredu\MultiTenant\Tenancy\TenantContext;
 
 $context = app(TenantContext::class);
 
-// Get current tenant
-$tenant = $context->getTenant();      // Returns Model|null
+// Get current tenant ID
 $tenantId = $context->getTenantId();  // Returns string|null
 
 // Check if tenant is set
@@ -125,12 +123,11 @@ if ($context->hasTenant()) {
     // Tenant is available
 }
 
-// Manually set tenant (testing/admin)
-$context->setTenant($tenantModel);
-$context->setTenantById('tenant-uuid');
+// Manually set tenant ID (testing/jobs/commands)
+$context->setTenantId('tenant-uuid');
 
 // Run code in tenant context
-$context->runForTenant($tenant, function () {
+$context->runForTenant('tenant-uuid', function () {
     // Code runs with this tenant
 });
 
@@ -185,16 +182,16 @@ class GlobalSetting extends Model
 
 ### 3. TenantResolver (Contract)
 
-Interface that each service must implement to define how tenants are resolved.
+Interface that defines how tenant IDs are resolved.
 
 **Location:** `src/Contracts/TenantResolver.php`
 
 ```php
 use Ouredu\MultiTenant\Contracts\TenantResolver;
 
-class SessionTenantResolver implements TenantResolver
+class CustomTenantResolver implements TenantResolver
 {
-    public function resolveTenant(): ?Model
+    public function resolveTenantId(): ?string
     {
         $session = getSession(); // Your session helper
         
@@ -202,9 +199,32 @@ class SessionTenantResolver implements TenantResolver
             return null;
         }
         
-        return Tenant::find($session->tenant_id);
+        return $session->tenant_id;
     }
 }
+```
+
+#### Built-in Resolvers
+
+**UserSessionTenantResolver** - Gets tenant_id from your `getSession()` helper:
+```php
+// Reads tenant_id column from session object returned by getSession()
+$tenantId = getSession()?->tenant_id;
+```
+
+**DomainTenantResolver** - Gets tenant_id by querying tenant table by domain:
+```php
+// Queries: SELECT id FROM tenants WHERE domain = 'school1.ouredu.com'
+$tenantId = Tenant::where('domain', $host)->value('id');
+```
+
+**ChainTenantResolver** - Chains multiple resolvers (default):
+```php
+// Tries UserSessionTenantResolver first, then DomainTenantResolver
+$resolver = new ChainTenantResolver([
+    new UserSessionTenantResolver(),
+    new DomainTenantResolver(),
+]);
 ```
 
 ---
@@ -280,55 +300,6 @@ Route::middleware(['auth', 'tenant'])->group(function () {
 
 ---
 
-### 6. TenantAwareJob Trait
-
-Trait for queue jobs to maintain tenant context.
-
-**Location:** `src/Traits/TenantAwareJob.php`
-
-```php
-use Ouredu\MultiTenant\Traits\TenantAwareJob;
-
-class ProcessPayment implements ShouldQueue
-{
-    use TenantAwareJob;
-    
-    public function handle(): void
-    {
-        // Job runs in the correct tenant context
-        $payments = Payment::all(); // Automatically scoped
-    }
-}
-```
-
----
-
-### 7. TenantAwareCommand Trait
-
-Trait for Artisan commands to handle tenant context.
-
-**Location:** `src/Traits/TenantAwareCommand.php`
-
-```php
-use Ouredu\MultiTenant\Traits\TenantAwareCommand;
-
-class SyncDataCommand extends Command
-{
-    use TenantAwareCommand;
-    
-    protected $signature = 'data:sync {--tenant=}';
-    
-    public function handle(): void
-    {
-        $this->runForTenant(function () {
-            // Command runs in tenant context
-        });
-    }
-}
-```
-
----
-
 ## Data Flow
 
 ### Web Request Flow
@@ -337,8 +308,8 @@ class SyncDataCommand extends Command
 1. Request arrives
 2. TenantMiddleware triggers TenantContext
 3. TenantContext calls TenantResolver
-4. TenantResolver resolves tenant (from session/header/domain)
-5. TenantContext caches the tenant model
+4. TenantResolver resolves tenant_id (from session/domain)
+5. TenantContext caches the tenant_id
 6. TenantScope uses TenantContext for all queries
 7. Models automatically filter by tenant_id
 ```
@@ -346,18 +317,18 @@ class SyncDataCommand extends Command
 ### Queue Job Flow
 
 ```
-1. Job is dispatched with tenant context serialized
-2. TenantAwareJob trait captures current tenant ID
-3. Job is processed by queue worker
-4. TenantAwareJob restores tenant context
-5. Job code runs with correct tenant
+1. Job is dispatched with tenant_id stored in job property
+2. Job is processed by queue worker
+3. Job calls setTenantId() to restore tenant context
+4. Job code runs with correct tenant
+5. TenantScope filters all queries
 ```
 
 ### Console Command Flow
 
 ```
 1. Command receives --tenant option
-2. TenantAwareCommand resolves tenant by ID
+2. Command calls setTenantId() with provided ID
 3. Command code runs with tenant context
 4. TenantScope filters all queries
 ```
@@ -373,20 +344,19 @@ multi-tenant-package/
 ├── src/
 │   ├── Contracts/
 │   │   └── TenantResolver.php    # Interface for tenant resolution
-│   ├── Messages/
-│   │   └── TenantMessage.php     # Message broker tenant handling
 │   ├── Middleware/
-│   │   ├── SetTenantForJob.php   # Job middleware
 │   │   └── TenantMiddleware.php  # HTTP middleware
 │   ├── Providers/
 │   │   └── TenantServiceProvider.php
+│   ├── Resolvers/
+│   │   ├── ChainTenantResolver.php
+│   │   ├── DomainTenantResolver.php
+│   │   └── UserSessionTenantResolver.php
 │   ├── Tenancy/
 │   │   ├── TenantContext.php     # Central tenant service
 │   │   └── TenantScope.php       # Global query scope
 │   └── Traits/
-│       ├── HasTenant.php         # Model trait
-│       ├── TenantAwareCommand.php
-│       └── TenantAwareJob.php
+│       └── HasTenant.php         # Model trait
 ├── tests/
 │   └── ...
 ├── composer.json
@@ -602,12 +572,26 @@ dump($context->getTenantId());
 
 **Symptoms:** Queued jobs don't have tenant context.
 
-**Solution:** Use `TenantAwareJob` trait:
+**Solution:** Store tenant ID in job and restore in handle():
 
 ```php
 class YourJob implements ShouldQueue
 {
-    use TenantAwareJob;
+    public ?string $tenantId = null;
+
+    public function __construct()
+    {
+        $this->tenantId = app(TenantContext::class)->getTenantId();
+    }
+
+    public function handle(): void
+    {
+        if ($this->tenantId) {
+            app(TenantContext::class)->setTenantId($this->tenantId);
+        }
+        
+        // Job code runs with tenant context
+    }
 }
 ```
 
@@ -630,11 +614,21 @@ class YourJob implements ShouldQueue
 ```php
 // config/multi-tenant.php
 return [
-    // Default tenant model class
+    // Tenant model class (used by DomainTenantResolver)
     'tenant_model' => \App\Models\Tenant::class,
     
     // Default tenant column name
     'tenant_column' => 'tenant_id',
+    
+    // Session configuration (UserSessionTenantResolver)
+    'session' => [
+        'tenant_column' => null,  // Defaults to tenant_column
+    ],
+    
+    // Domain configuration (DomainTenantResolver)
+    'domain' => [
+        'column' => 'domain',  // Domain column on tenant model
+    ],
 ];
 ```
 
@@ -642,18 +636,18 @@ return [
 
 | Class | Purpose |
 |-------|---------|
-| `TenantContext` | Central tenant state management |
+| `TenantContext` | Central tenant ID state management |
 | `TenantScope` | Global query scope |
 | `TenantResolver` | Contract for resolution strategy |
+| `ChainTenantResolver` | Chains multiple resolvers (default) |
+| `UserSessionTenantResolver` | Resolves tenant_id from getSession() |
+| `DomainTenantResolver` | Resolves tenant_id by domain query |
 | `HasTenant` | Model trait for tenant relationship |
 | `TenantMiddleware` | HTTP request middleware |
-| `TenantAwareJob` | Queue job trait |
-| `TenantAwareCommand` | Console command trait |
-| `TenantMessage` | Message broker integration |
 
 ---
 
-**Document Version:** 1.1  
+**Document Version:** 2.0  
 **Last Updated:** January 2026  
 **Maintainer:** OurEdu Development Team
 

@@ -9,7 +9,6 @@ declare(strict_types=1);
 
 namespace Tests;
 
-use Illuminate\Database\Eloquent\Model;
 use Mockery;
 use Orchestra\Testbench\TestCase as OrchestraTestCase;
 use Ouredu\MultiTenant\Contracts\TenantResolver;
@@ -53,7 +52,7 @@ abstract class TestCase extends OrchestraTestCase
         // Bind a default resolver that returns null
         $app->bind(TenantResolver::class, function () {
             return new class () implements TenantResolver {
-                public function resolveTenant(): ?Model
+                public function resolveTenantId(): ?string
                 {
                     return null;
                 }

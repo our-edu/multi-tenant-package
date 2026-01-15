@@ -13,10 +13,8 @@ return [
     | Tenant Model
     |--------------------------------------------------------------------------
     |
-    | The Eloquent model that represents your tenant. In your payment backend
-    | this could be something like:
-    |
-    |   Domain\Models\Tenant\Tenant::class
+    | The Eloquent model that represents your tenant. Used by DomainTenantResolver
+    | to query tenants by domain.
     |
     */
     'tenant_model' => env('MULTI_TENANT_MODEL', 'App\\Models\\Tenant'),
@@ -31,4 +29,47 @@ return [
     |
     */
     'tenant_column' => env('MULTI_TENANT_COLUMN', 'tenant_id'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Session Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for UserSessionTenantResolver.
+    | This resolver uses the getSession() helper to get tenant_id.
+    |
+    */
+    'session' => [
+        /*
+        |--------------------------------------------------------------------------
+        | Tenant Column in Session
+        |--------------------------------------------------------------------------
+        |
+        | The column/property name on the session object that stores tenant_id.
+        | Defaults to the global tenant_column if not set.
+        |
+        */
+        'tenant_column' => env('MULTI_TENANT_SESSION_TENANT_COLUMN', 'tenant_id'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Domain Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for DomainTenantResolver.
+    | Resolves tenant from request domain.
+    |
+    */
+    'domain' => [
+        /*
+        |--------------------------------------------------------------------------
+        | Domain Column
+        |--------------------------------------------------------------------------
+        |
+        | The column name on the tenant model that stores the domain value.
+        |
+        */
+        'column' => env('MULTI_TENANT_DOMAIN_COLUMN', 'domain'),
+    ],
 ];
