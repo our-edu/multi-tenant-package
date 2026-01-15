@@ -77,7 +77,7 @@ This package implements a **Shared Database, Shared Schema** pattern with **Row-
 │                        TenantScope                               │
 │            (Global scope on Eloquent models)                     │
 │                                                                  │
-│     SELECT * FROM users WHERE tenant_id = 'xxx' AND ...         │
+│     SELECT * FROM users WHERE tenant_id = 1 AND ...             │
 └─────────────────────────────────────────────────────────────────┘
                                 │
                                 ▼

@@ -20,8 +20,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `setTenantId(?int $tenantId)` method on TenantContext
 - `runForTenant(int $tenantId, callable $callback)` method on TenantContext
 
-### Removed
-- Removed planned TenantAwareJob, TenantAwareCommand, TenantMessage, SetTenantForJob (use `setTenantId()` directly)
 
 ## [1.0.0] - 2026-01-12
 
