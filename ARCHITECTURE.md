@@ -43,6 +43,7 @@ This package implements a **Shared Database, Shared Schema** pattern with **Row-
 | **Minimal Code Changes** | Existing code works with minimal modifications |
 | **Flexible** | Models can opt-out of tenant scoping when needed |
 | **Service Agnostic** | Each service implements its own tenant resolution strategy |
+| **Octane Compatible** | Uses scoped bindings for proper request isolation |
 
 ---
 
@@ -136,9 +137,10 @@ $context->clear();
 ```
 
 **Characteristics:**
-- Singleton (one instance per request)
+- Scoped binding (one instance per request, safe for Laravel Octane)
 - Lazy-loaded (resolved only when accessed)
 - Thread-safe for queue workers
+- Automatically cleared between requests in Octane
 
 ---
 
@@ -463,14 +465,18 @@ Schema::table('your_table', function (Blueprint $table) {
 // ✅ Correct - Uses automatic scoping
 $users = User::where('active', true)->get();
 
-// ✅ Correct - Explicit bypass for admin
+// ✅ Correct - Explicit bypass for admin/cross-tenant operations
 $allUsers = User::withoutTenantScope()->get();
 
-// ❌ Wrong - Redundant tenant filter
+// ❌ Bad - Redundant tenant filter (scope already adds this)
 $users = User::where('tenant_id', $tenantId)->get();
 
-// ❌ Wrong - Bypassing without reason
-$users = User::withoutTenantScope()->where('id', 1)->first();
+// ❌ Bad - Bypassing scope risks accessing other tenant's data
+// User with id=1 might belong to a different tenant!
+$user = User::withoutTenantScope()->where('id', 1)->first();
+
+// ✅ Correct - Let the scope filter by current tenant
+$user = User::find(1);  // Returns null if user doesn't belong to current tenant
 ```
 
 ### 4. Testing
@@ -484,6 +490,27 @@ public function testFeature(): void
     // Test code runs in tenant context
 }
 ```
+
+### 5. Laravel Octane
+
+This package is fully compatible with Laravel Octane. The `TenantContext` uses `scoped()` binding instead of `singleton()` to ensure proper request isolation:
+
+```php
+// TenantServiceProvider uses scoped binding
+$this->app->scoped(TenantContext::class, function (Application $app): TenantContext {
+    return new TenantContext($app->make(TenantResolver::class));
+});
+```
+
+| Binding | Octane Safe | Description |
+|---------|-------------|-------------|
+| `singleton()` | ❌ No | Instance persists across requests, causes data leakage |
+| `scoped()` | ✅ Yes | Instance is reset for each request |
+
+**Why this matters:**
+- With `singleton()`, tenant data could leak between requests
+- With `scoped()`, each request gets a fresh `TenantContext` instance
+- No additional configuration needed for Octane
 
 ---
 

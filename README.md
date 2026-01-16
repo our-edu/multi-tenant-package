@@ -12,6 +12,7 @@ A Laravel package for building multi-tenant applications. This package provides 
 - **Tenant Context** - Centralized tenant state management across requests, jobs, and commands
 - **Automatic Query Scoping** - All queries automatically filtered by tenant
 - **Model Trait** - Simple `HasTenant` trait for tenant-aware models
+- **Built-in Resolvers** - Session and Domain resolvers included
 - **Flexible Resolution** - Implement your own tenant resolution strategy
 - **Middleware Support** - HTTP middleware for tenant resolution
 - **Auto-assignment** - Automatically sets tenant ID on model creation/update
@@ -19,6 +20,7 @@ A Laravel package for building multi-tenant applications. This package provides 
 - **Customizable** - Override tenant column names per model
 - **Queue Support** - Maintain tenant context in queued jobs
 - **Command Support** - Run commands for specific tenants
+- **Laravel Octane Compatible** - Uses scoped bindings for request isolation
 
 ## Requirements
 
