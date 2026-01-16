@@ -1,6 +1,6 @@
 # Multi-Tenant Architecture Documentation
 
-> © 2026 OurEdu - Multi-Tenant Infrastructure for Laravel Services
+> Copyright 2026 OurEdu - Multi-Tenant Infrastructure for Laravel Services
 
 This document describes the architecture and design decisions behind the multi-tenant package for OurEdu Laravel services.
 
@@ -247,16 +247,13 @@ Model trait providing tenant relationship and automatic tenant assignment.
 
 ```php
 use Ouredu\MultiTenant\Traits\HasTenant;
-use Ouredu\MultiTenant\Tenancy\TenantScope;
 
 class Payment extends Model
 {
     use HasTenant;
     
-    protected static function booted(): void
-    {
-        static::addGlobalScope(new TenantScope());
-    }
+    // TenantScope is automatically registered by the trait
+    // No manual setup required
 }
 ```
 
@@ -264,6 +261,7 @@ class Payment extends Model
 - `tenant()` - BelongsTo relationship
 - `scopeForTenant($query, $tenantId)` - Query scope
 - Automatic `tenant_id` assignment on create/update
+- Automatic `TenantScope` registration (no manual setup needed)
 - Custom tenant column support
 
 **Custom Tenant Column:**
@@ -415,18 +413,17 @@ protected $middlewareAliases = [
 
 ```php
 use Ouredu\MultiTenant\Traits\HasTenant;
-use Ouredu\MultiTenant\Tenancy\TenantScope;
 
 class YourModel extends Model
 {
     use HasTenant;
     
-    protected static function booted(): void
-    {
-        static::addGlobalScope(new TenantScope());
-    }
+    // TenantScope is automatically added by HasTenant trait
+    // No need to manually add it in booted()
 }
 ```
+
+**Note:** The `HasTenant` trait automatically registers the `TenantScope` when the model boots. You don't need to manually add it unless you want to customize the behavior.
 
 ### Step 5: Add Database Column
 
@@ -570,7 +567,7 @@ class TenantIsolationTest extends TestCase
 |-------|----------|
 | Tenant context not initialized | Ensure `TenantMiddleware` is applied |
 | Wrong tenant ID | Verify session/resolver returns correct tenant |
-| Model missing scope | Add `TenantScope` to model's `booted()` method |
+| Model missing scope | Ensure model uses `HasTenant` trait (automatically adds `TenantScope`) |
 
 **Debug:**
 
@@ -675,4 +672,3 @@ return [
 **Document Version:** 2.0  
 **Last Updated:** January 2026  
 **Maintainer:** OurEdu Development Team
-
