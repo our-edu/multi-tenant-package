@@ -669,6 +669,6 @@ return [
 
 ---
 
-**Document Version:** 2.0  
+**Document Version:** 1.0  
 **Last Updated:** January 2026  
 **Maintainer:** OurEdu Development Team
