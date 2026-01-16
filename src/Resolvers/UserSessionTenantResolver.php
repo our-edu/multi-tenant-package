@@ -102,3 +102,4 @@ class UserSessionTenantResolver implements TenantResolver
             ?? config('multi-tenant.tenant_column', 'tenant_id'));
     }
 }
+

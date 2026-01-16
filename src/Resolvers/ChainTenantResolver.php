@@ -65,3 +65,4 @@ class ChainTenantResolver implements TenantResolver
         ];
     }
 }
+
