@@ -53,38 +53,38 @@ This package implements a **Shared Database, Shared Schema** pattern with **Row-
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                         HTTP Request                             │
+│                         HTTP Request                            │
 └─────────────────────────────────────────────────────────────────┘
                                 │
                                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                      TenantMiddleware                            │
-│              (Initializes tenant context early)                  │
+│                      TenantMiddleware                           │
+│              (Initializes tenant context early)                 │
 └─────────────────────────────────────────────────────────────────┘
                                 │
                                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                       TenantContext                              │
-│                  (Singleton per request)                         │
-│                                                                  │
+│                       TenantContext                             │
+│                  (Scoped per request)                           │
+│                                                                 │
 │  ┌─────────────────────────────────────────────────────────┐    │
-│  │              TenantResolver (Your Implementation)        │    │
-│  │   Session / Domain / Header / CLI / Message Broker       │    │
+│  │              TenantResolver (Your Implementation)       │    │
+│  │   Session / Domain / Header / CLI / Message Broker      │    │
 │  └─────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
                                 │
                                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                        TenantScope                               │
-│            (Global scope on Eloquent models)                     │
-│                                                                  │
+│                        TenantScope                              │
+│            (Global scope on Eloquent models)                    │
+│                                                                 │
 │     SELECT * FROM users WHERE tenant_id = 1 AND ...             │
 └─────────────────────────────────────────────────────────────────┘
                                 │
                                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                         Database                                 │
-│              (Shared database, tenant_id column)                 │
+│                         Database                                │
+│              (Shared database, tenant_id column)                │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -380,31 +380,29 @@ multi-tenant-package/
 ### Step 1: Install Package
 
 ```bash
-composer require ouredu/multi-tenant
+composer require our-edu/multi-tenant
 ```
 
-### Step 2: Publish Configuration
+The package will auto-register its service provider and automatically publish the configuration file.
 
-```bash
-php artisan vendor:publish --provider="Ouredu\MultiTenant\Providers\TenantServiceProvider" --tag=config
-```
+### Step 2: Implement TenantResolver (Optional)
 
-### Step 3: Implement TenantResolver
+The package includes built-in resolvers (`ChainTenantResolver` with `UserSessionTenantResolver` and `DomainTenantResolver`). If you need a custom resolver:
 
 ```php
-// app/Providers/TenantServiceProvider.php
+// app/Providers/AppServiceProvider.php
 use Ouredu\MultiTenant\Contracts\TenantResolver;
 
-class TenantServiceProvider extends ServiceProvider
+class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->app->bind(TenantResolver::class, SessionTenantResolver::class);
+        $this->app->bind(TenantResolver::class, YourCustomResolver::class);
     }
 }
 ```
 
-### Step 4: Add Middleware
+### Step 3: Add Middleware
 
 ```php
 // app/Http/Kernel.php
@@ -413,7 +411,7 @@ protected $middlewareAliases = [
 ];
 ```
 
-### Step 5: Update Models
+### Step 4: Update Models
 
 ```php
 use Ouredu\MultiTenant\Traits\HasTenant;
@@ -430,7 +428,7 @@ class YourModel extends Model
 }
 ```
 
-### Step 6: Add Database Column
+### Step 5: Add Database Column
 
 ```php
 // Migration
