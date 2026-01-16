@@ -68,8 +68,9 @@ This package implements a **Shared Database, Shared Schema** pattern with **Row-
 │                  (Scoped per request)                           │
 │                                                                 │
 │  ┌─────────────────────────────────────────────────────────┐    │
-│  │              TenantResolver (Your Implementation)       │    │
-│  │   Session / Domain / Header / CLI / Message Broker      │    │
+│  │         ChainTenantResolver (Default)                   │    │
+│  │   1. UserSessionTenantResolver → getSession()->tenant_id│    │
+│  │   2. DomainTenantResolver → query by domain             │    │
 │  └─────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
                                 │
@@ -235,6 +236,187 @@ $resolver = new ChainTenantResolver([
 ]);
 ```
 
+#### Creating a Custom TenantResolver
+
+You can create your own resolver to implement custom tenant resolution logic. Here are common use cases:
+
+**Example 1: Header-Based Resolver**
+
+```php
+// app/Resolvers/HeaderTenantResolver.php
+namespace App\Resolvers;
+
+use Illuminate\Http\Request;
+use Ouredu\MultiTenant\Contracts\TenantResolver;
+
+class HeaderTenantResolver implements TenantResolver
+{
+    public function resolveTenantId(): ?int
+    {
+        $request = app(Request::class);
+        $tenantId = $request->header('X-Tenant-ID');
+        
+        return $tenantId ? (int) $tenantId : null;
+    }
+}
+```
+
+**Example 2: Authenticated User Resolver**
+
+```php
+// app/Resolvers/AuthUserTenantResolver.php
+namespace App\Resolvers;
+
+use Ouredu\MultiTenant\Contracts\TenantResolver;
+
+class AuthUserTenantResolver implements TenantResolver
+{
+    public function resolveTenantId(): ?int
+    {
+        $user = auth()->user();
+        
+        return $user?->tenant_id;
+    }
+}
+```
+
+**Example 3: JWT Token Resolver**
+
+```php
+// app/Resolvers/JwtTenantResolver.php
+namespace App\Resolvers;
+
+use Ouredu\MultiTenant\Contracts\TenantResolver;
+
+class JwtTenantResolver implements TenantResolver
+{
+    public function resolveTenantId(): ?int
+    {
+        try {
+            $token = request()->bearerToken();
+            if (!$token) {
+                return null;
+            }
+            
+            $payload = json_decode(base64_decode(explode('.', $token)[1]), true);
+            
+            return isset($payload['tenant_id']) ? (int) $payload['tenant_id'] : null;
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+}
+```
+
+#### Registering a Custom TenantResolver
+
+You have two options for registering your custom resolver:
+
+**Option 1: Replace the Default Resolver**
+
+Replace the default `ChainTenantResolver` with your custom resolver:
+
+```php
+// app/Providers/AppServiceProvider.php
+use Ouredu\MultiTenant\Contracts\TenantResolver;
+use App\Resolvers\HeaderTenantResolver;
+
+class AppServiceProvider extends ServiceProvider
+{
+    public function register(): void
+    {
+        // Replace the default resolver with your custom one
+        $this->app->bind(TenantResolver::class, HeaderTenantResolver::class);
+    }
+}
+```
+
+**Option 2: Add to ChainTenantResolver (Recommended)**
+
+Add your custom resolver to the chain while keeping the built-in resolvers:
+
+```php
+// app/Providers/AppServiceProvider.php
+use Ouredu\MultiTenant\Contracts\TenantResolver;
+use Ouredu\MultiTenant\Resolvers\ChainTenantResolver;
+use Ouredu\MultiTenant\Resolvers\UserSessionTenantResolver;
+use Ouredu\MultiTenant\Resolvers\DomainTenantResolver;
+use App\Resolvers\HeaderTenantResolver;
+use App\Resolvers\JwtTenantResolver;
+
+class AppServiceProvider extends ServiceProvider
+{
+    public function register(): void
+    {
+        // Create a custom chain with your resolvers
+        $this->app->bind(TenantResolver::class, function ($app) {
+            return new ChainTenantResolver([
+                // Try JWT token first (most secure)
+                new JwtTenantResolver(),
+                
+                // Then try header
+                new HeaderTenantResolver(),
+                
+                // Then try session (built-in)
+                new UserSessionTenantResolver(),
+                
+                // Finally try domain (built-in)
+                new DomainTenantResolver(),
+            ]);
+        });
+    }
+}
+```
+
+**Option 3: Extend ChainTenantResolver**
+
+Create a custom chain resolver class:
+
+```php
+// app/Resolvers/CustomChainTenantResolver.php
+namespace App\Resolvers;
+
+use Ouredu\MultiTenant\Resolvers\ChainTenantResolver;
+use Ouredu\MultiTenant\Resolvers\UserSessionTenantResolver;
+use Ouredu\MultiTenant\Resolvers\DomainTenantResolver;
+
+class CustomChainTenantResolver extends ChainTenantResolver
+{
+    protected function getDefaultResolvers(): array
+    {
+        return [
+            new HeaderTenantResolver(),        // Your custom resolver first
+            new UserSessionTenantResolver(),   // Then built-in resolvers
+            new DomainTenantResolver(),
+        ];
+    }
+}
+```
+
+Then register it:
+
+```php
+// app/Providers/AppServiceProvider.php
+use Ouredu\MultiTenant\Contracts\TenantResolver;
+use App\Resolvers\CustomChainTenantResolver;
+
+class AppServiceProvider extends ServiceProvider
+{
+    public function register(): void
+    {
+        $this->app->bind(TenantResolver::class, CustomChainTenantResolver::class);
+    }
+}
+```
+
+**Important Notes:**
+
+- Resolvers are tried in order until one returns a non-null tenant ID
+- Once a resolver returns a tenant ID, the chain stops and that ID is used
+- If all resolvers return `null`, the tenant context will be empty
+- The order matters - put the most reliable/fastest resolvers first
+- Console commands skip resolution unless running unit tests
+
 ---
 
 ### 4. HasTenant Trait
@@ -290,6 +472,17 @@ HTTP middleware that initializes tenant context early in the request lifecycle.
 
 **Location:** `src/Middleware/TenantMiddleware.php`
 
+**How it connects to ChainTenantResolver:**
+
+The middleware doesn't directly use `ChainTenantResolver`. Instead, it follows this flow:
+
+1. Middleware calls `app(TenantContext::class)`
+2. Service container resolves `TenantContext`
+3. `TenantContext` constructor receives `TenantResolver` (injected via DI)
+4. The `TenantResolver` is whatever you bound in `AppServiceProvider` (default: `ChainTenantResolver`)
+5. When `$context->getTenantId()` is called, it triggers `$resolver->resolveTenantId()`
+6. If you bound `ChainTenantResolver`, it tries each resolver in the chain
+
 **Registration:**
 
 ```php
@@ -302,6 +495,22 @@ protected $middlewareAliases = [
 Route::middleware(['auth', 'tenant'])->group(function () {
     // Tenant-scoped routes
 });
+```
+
+**Implementation:**
+
+```php
+public function handle(Request $request, Closure $next): mixed
+{
+    /** @var TenantContext $context */
+    $context = app(TenantContext::class);
+    
+    // This triggers lazy resolution via the bound TenantResolver
+    // If ChainTenantResolver is bound, it will try each resolver in order
+    $context->getTenantId();
+    
+    return $next($request);
+}
 ```
 
 ---
@@ -319,6 +528,93 @@ Route::middleware(['auth', 'tenant'])->group(function () {
 6. TenantScope uses TenantContext for all queries
 7. Models automatically filter by tenant_id
 ```
+
+**Detailed Flow from Middleware to ChainTenantResolver:**
+
+```
+HTTP Request
+    │
+    ▼
+TenantMiddleware::handle()
+    │
+    ├─→ app(TenantContext::class)  [Service Container resolves TenantContext]
+    │       │
+    │       └─→ TenantServiceProvider registers TenantContext
+    │               │
+    │               └─→ new TenantContext($app->make(TenantResolver::class))
+    │                       │
+    │                       └─→ Service Container resolves TenantResolver
+    │                               │
+    │                               ├─→ If bound in AppServiceProvider:
+    │                               │       └─→ Uses your custom binding
+    │                               │
+    │                               └─→ If not bound (default):
+    │                                       └─→ Laravel tries to instantiate
+    │                                           (You should bind ChainTenantResolver)
+    │
+    ├─→ $context->getTenantId()  [Triggers lazy resolution]
+    │       │
+    │       └─→ $this->resolver->resolveTenantId()
+    │               │
+    │               └─→ ChainTenantResolver::resolveTenantId()
+    │                       │
+    │                       ├─→ Try UserSessionTenantResolver::resolveTenantId()
+    │                       │       └─→ getSession()?->tenant_id
+    │                       │
+    │                       └─→ If null, try DomainTenantResolver::resolveTenantId()
+    │                               └─→ Tenant::where('domain', $host)->value('id')
+    │
+    └─→ Tenant ID cached in TenantContext for request lifetime
+```
+
+**Service Container Binding Flow:**
+
+The connection happens through Laravel's service container:
+
+1. **TenantServiceProvider** (package) registers `TenantContext`:
+   ```php
+   $this->app->scoped(TenantContext::class, function (Application $app): TenantContext {
+       return new TenantContext($app->make(TenantResolver::class));
+   });
+   ```
+
+2. **TenantServiceProvider** (package) binds `ChainTenantResolver` as default:
+   ```php
+   // Package automatically binds this (uses bind() for Octane compatibility):
+   $this->app->bind(TenantResolver::class, ChainTenantResolver::class);
+   ```
+
+3. **AppServiceProvider** (your app) can optionally override `TenantResolver`:
+   ```php
+   // Option 1: Use default ChainTenantResolver (no binding needed!)
+   // The package provides this by default
+   
+   // Option 2: Override with custom chain
+   use Ouredu\MultiTenant\Contracts\TenantResolver;
+   use Ouredu\MultiTenant\Resolvers\ChainTenantResolver;
+   use Ouredu\MultiTenant\Resolvers\UserSessionTenantResolver;
+   use Ouredu\MultiTenant\Resolvers\DomainTenantResolver;
+   
+   $this->app->bind(TenantResolver::class, function ($app) {
+       return new ChainTenantResolver([
+           new YourCustomResolver(),
+           new UserSessionTenantResolver(),
+           new DomainTenantResolver(),
+       ]);
+   });
+   
+   // Option 3: Replace with completely custom resolver
+   $this->app->bind(TenantResolver::class, YourCustomResolver::class);
+   ```
+
+4. **When TenantMiddleware runs:**
+   - Calls `app(TenantContext::class)`
+   - Container resolves `TenantContext`, which needs `TenantResolver`
+   - Container resolves `TenantResolver` (default: `ChainTenantResolver` from package, or your override)
+   - `TenantContext` calls `$resolver->resolveTenantId()`
+   - `ChainTenantResolver` tries each resolver in order
+
+**Important:** The package provides `ChainTenantResolver` as the default binding. You only need to bind `TenantResolver::class` in your `AppServiceProvider` if you want to customize or replace it.
 
 ### Queue Job Flow
 
@@ -385,20 +681,58 @@ The package will auto-register its service provider and automatically publish th
 
 ### Step 2: Implement TenantResolver (Optional)
 
-The package includes built-in resolvers (`ChainTenantResolver` with `UserSessionTenantResolver` and `DomainTenantResolver`). If you need a custom resolver:
+The package automatically binds `ChainTenantResolver` as the default `TenantResolver`. This includes `UserSessionTenantResolver` and `DomainTenantResolver` by default.
+
+**Option A: Use Built-in Resolvers (Default - Recommended)**
+
+No configuration needed! The package automatically provides `ChainTenantResolver` with `UserSessionTenantResolver` and `DomainTenantResolver`. Just install the package and it works out of the box.
+
+**Option B: Add Custom Resolver to Chain**
+
+If you need to add a custom resolver (e.g., header-based, JWT token) while keeping the built-in resolvers:
 
 ```php
 // app/Providers/AppServiceProvider.php
 use Ouredu\MultiTenant\Contracts\TenantResolver;
+use Ouredu\MultiTenant\Resolvers\ChainTenantResolver;
+use Ouredu\MultiTenant\Resolvers\UserSessionTenantResolver;
+use Ouredu\MultiTenant\Resolvers\DomainTenantResolver;
+use App\Resolvers\HeaderTenantResolver; // Your custom resolver
 
 class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->app->bind(TenantResolver::class, YourCustomResolver::class);
+        $this->app->bind(TenantResolver::class, function ($app) {
+            return new ChainTenantResolver([
+                new HeaderTenantResolver(),        // Your custom resolver first
+                new UserSessionTenantResolver(),   // Then built-in resolvers
+                new DomainTenantResolver(),
+            ]);
+        });
     }
 }
 ```
+
+**Option C: Replace with Custom Resolver**
+
+If you want to completely replace the default resolver:
+
+```php
+// app/Providers/AppServiceProvider.php
+use Ouredu\MultiTenant\Contracts\TenantResolver;
+use App\Resolvers\CustomTenantResolver;
+
+class AppServiceProvider extends ServiceProvider
+{
+    public function register(): void
+    {
+        $this->app->bind(TenantResolver::class, CustomTenantResolver::class);
+    }
+}
+```
+
+**See [Creating a Custom TenantResolver](#3-tenantresolver-contract) section above for detailed examples and implementation patterns.**
 
 ### Step 3: Add Middleware
 
@@ -488,24 +822,29 @@ public function testFeature(): void
 
 ### 5. Laravel Octane
 
-This package is fully compatible with Laravel Octane. The `TenantContext` uses `scoped()` binding instead of `singleton()` to ensure proper request isolation:
+This package is fully compatible with Laravel Octane. The package uses Octane-safe bindings:
 
 ```php
-// TenantServiceProvider uses scoped binding
+// TenantServiceProvider uses scoped binding for TenantContext
 $this->app->scoped(TenantContext::class, function (Application $app): TenantContext {
     return new TenantContext($app->make(TenantResolver::class));
 });
+
+// Uses bind() for TenantResolver (stateless, but bind() is safer for Octane)
+$this->app->bind(TenantResolver::class, ChainTenantResolver::class);
 ```
 
-| Binding | Octane Safe | Description |
-|---------|-------------|-------------|
-| `singleton()` | ❌ No | Instance persists across requests, causes data leakage |
-| `scoped()` | ✅ Yes | Instance is reset for each request |
+| Binding | Used For | Octane Safe | Description |
+|---------|----------|-------------|-------------|
+| `singleton()` | ❌ Not used | ❌ No | Instance persists across requests, causes data leakage |
+| `scoped()` | `TenantContext` | ✅ Yes | Instance is reset for each request |
+| `bind()` | `TenantResolver` | ✅ Yes | New instance per resolution (stateless, but extra safe) |
 
 **Why this matters:**
-- With `singleton()`, tenant data could leak between requests
-- With `scoped()`, each request gets a fresh `TenantContext` instance
+- `TenantContext` uses `scoped()` - each request gets a fresh instance with isolated tenant state
+- `TenantResolver` uses `bind()` - creates new instance per resolution (stateless, but ensures no cross-request state)
 - No additional configuration needed for Octane
+- All tenant data is properly isolated between requests
 
 ---
 
@@ -666,6 +1005,15 @@ return [
 | `DomainTenantResolver` | Resolves tenant_id by domain query |
 | `HasTenant` | Model trait for tenant relationship |
 | `TenantMiddleware` | HTTP request middleware |
+
+### Resolver Registration Quick Reference
+
+| Scenario | Registration Method | Example Use Case |
+|----------|---------------------|-----------------|
+| **Use defaults only** | No registration needed | Standard web app with session |
+| **Add custom to chain** | Bind `ChainTenantResolver` with array | Add JWT/header resolver + keep defaults |
+| **Replace completely** | Bind your custom resolver class | Custom resolution logic only |
+| **Extend chain class** | Create class extending `ChainTenantResolver` | Reusable custom chain configuration |
 
 ---
 

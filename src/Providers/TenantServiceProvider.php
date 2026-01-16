@@ -12,6 +12,7 @@ namespace Ouredu\MultiTenant\Providers;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
 use Ouredu\MultiTenant\Contracts\TenantResolver;
+use Ouredu\MultiTenant\Resolvers\ChainTenantResolver;
 use Ouredu\MultiTenant\Tenancy\TenantContext;
 
 class TenantServiceProvider extends ServiceProvider
@@ -19,6 +20,11 @@ class TenantServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__ . '/../../config/multi-tenant.php', 'multi-tenant');
+
+        // Bind ChainTenantResolver as the default TenantResolver
+        // Uses bind() instead of singleton() for Octane compatibility
+        // Users can override this in their AppServiceProvider if needed
+        $this->app->bind(TenantResolver::class, ChainTenantResolver::class);
 
         $this->app->scoped(TenantContext::class, function (Application $app): TenantContext {
             return new TenantContext($app->make(TenantResolver::class));
