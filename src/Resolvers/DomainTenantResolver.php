@@ -111,4 +111,3 @@ class DomainTenantResolver implements TenantResolver
         return (string) config('multi-tenant.domain.column', 'domain');
     }
 }
-
