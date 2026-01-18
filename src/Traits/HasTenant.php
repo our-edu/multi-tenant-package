@@ -37,6 +37,11 @@ trait HasTenant
 
         // Set tenant on creation if missing
         static::creating(function (Model $model): void {
+            // Skip if model explicitly excludes tenant scope
+            if (property_exists($model, 'withoutTenantScope') && $model->withoutTenantScope) {
+                return;
+            }
+
             $column = static::resolveTenantColumn($model);
 
             if (! $model->getAttribute($column)) {
@@ -52,6 +57,11 @@ trait HasTenant
 
         // Set tenant on update if still missing
         static::updating(function (Model $model): void {
+            // Skip if model explicitly excludes tenant scope
+            if (property_exists($model, 'withoutTenantScope') && $model->withoutTenantScope) {
+                return;
+            }
+
             $column = static::resolveTenantColumn($model);
 
             if (! $model->getAttribute($column)) {
