@@ -10,9 +10,12 @@ declare(strict_types=1);
 namespace Ouredu\MultiTenant\Providers;
 
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Ouredu\MultiTenant\Commands\TenantMigrateCommand;
 use Ouredu\MultiTenant\Contracts\TenantResolver;
+use Ouredu\MultiTenant\Listeners\TenantQueryListener;
 use Ouredu\MultiTenant\Resolvers\ChainTenantResolver;
 use Ouredu\MultiTenant\Tenancy\TenantContext;
 
@@ -27,6 +30,7 @@ class TenantServiceProvider extends ServiceProvider
         // Users can override this in their AppServiceProvider if needed
         $this->app->bind(TenantResolver::class, ChainTenantResolver::class);
 
+        // TenantContext is scoped (one instance per request) for Octane compatibility
         $this->app->scoped(TenantContext::class, function (Application $app): TenantContext {
             return new TenantContext($app->make(TenantResolver::class));
         });
@@ -34,8 +38,9 @@ class TenantServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        $this->registerCommands();
         $this->registerPublishing();
+        $this->registerCommands();
+        $this->registerQueryListener();
     }
 
     /**
@@ -73,6 +78,16 @@ class TenantServiceProvider extends ServiceProvider
             $this->publishes([
                 $configPath => $publishPath,
             ], 'config');
+        }
+    }
+
+    /**
+     * Register the database query listener.
+     */
+    protected function registerQueryListener(): void
+    {
+        if (config('multi-tenant.query_listener.enabled', true)) {
+            Event::listen(QueryExecuted::class, TenantQueryListener::class);
         }
     }
 
