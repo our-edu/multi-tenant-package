@@ -14,11 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **BREAKING:** Removed `runWithTenant()` and `runWithTenantId()` - use `runForTenant(int $tenantId, callable)` instead
 
 ### Added
-- `UserSessionTenantResolver` - Gets tenant_id from `getSession()` helper function
+- `UserSessionTenantResolver` - Gets tenant_id from configurable session helper (bound as default)
 - `DomainTenantResolver` - Gets tenant_id by querying tenant table by domain
-- `ChainTenantResolver` - Chains multiple resolvers together (default)
 - `setTenantId(?int $tenantId)` method on TenantContext
 - `runForTenant(int $tenantId, callable $callback)` method on TenantContext
+- Configurable session helper function name via config
+- `tenant:migrate` command to add tenant_id column to configured tables
+- `tables` config option to define tables that need tenant_id column
 
 
 ## [1.0.0] - 2026-01-12

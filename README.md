@@ -134,7 +134,29 @@ return [
     'domain' => [
         'column' => 'domain',  // Domain column on tenant model
     ],
+    
+    // Tables that need tenant_id column
+    'tables' => [
+        'users',
+        'orders',
+        'invoices',
+    ],
 ];
+```
+
+## Database Migration
+
+Add `tenant_id` column to your configured tables:
+
+```bash
+# Add tenant_id to all configured tables
+php artisan tenant:migrate
+
+# Add tenant_id to specific tables
+php artisan tenant:migrate --table=users --table=orders
+
+# Remove tenant_id from tables (rollback)
+php artisan tenant:migrate --rollback
 ```
 
 ## Usage

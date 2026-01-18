@@ -86,4 +86,23 @@ return [
         */
         'column' => env('MULTI_TENANT_DOMAIN_COLUMN', 'domain'),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Tenant Tables
+    |--------------------------------------------------------------------------
+    |
+    | List of tables that require tenant_id column. When running the
+    | `php artisan tenant:migrate` command, the package will add tenant_id
+    | column to these tables if it doesn't exist.
+    |
+    | You can organize tables by service/module for clarity.
+    |
+    */
+    'tables' => [
+        // Example:
+        // 'users',
+        // 'orders',
+        // 'invoices',
+    ],
 ];

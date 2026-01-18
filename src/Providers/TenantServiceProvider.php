@@ -11,6 +11,7 @@ namespace Ouredu\MultiTenant\Providers;
 
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
+use Ouredu\MultiTenant\Commands\TenantMigrateCommand;
 use Ouredu\MultiTenant\Contracts\TenantResolver;
 use Ouredu\MultiTenant\Resolvers\ChainTenantResolver;
 use Ouredu\MultiTenant\Tenancy\TenantContext;
@@ -32,6 +33,27 @@ class TenantServiceProvider extends ServiceProvider
     }
 
     public function boot(): void
+    {
+        $this->registerCommands();
+        $this->registerPublishing();
+    }
+
+    /**
+     * Register the package's commands.
+     */
+    protected function registerCommands(): void
+    {
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                TenantMigrateCommand::class,
+            ]);
+        }
+    }
+
+    /**
+     * Register the package's publishable resources.
+     */
+    protected function registerPublishing(): void
     {
         $configPath = $this->configPath();
         $publishPath = $this->app->configPath('multi-tenant.php');
