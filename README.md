@@ -1,8 +1,8 @@
 # Laravel Multi-Tenant
 
-[![Packagist Version](https://img.shields.io/packagist/v/ouredu/multi-tenant.svg?style=flat-square)](https://packagist.org/packages/ouredu/multi-tenant)
-[![License](https://img.shields.io/packagist/l/ouredu/multi-tenant.svg?style=flat-square)](LICENSE)
-[![PHP Version](https://img.shields.io/packagist/php-v/ouredu/multi-tenant.svg?style=flat-square)](composer.json)
+[![Packagist Version](https://img.shields.io/packagist/v/our-edu/multi-tenant.svg?style=flat-square)](https://packagist.org/packages/ouredu/multi-tenant)
+[![License](https://img.shields.io/packagist/l/our-edu/multi-tenant.svg?style=flat-square)](LICENSE)
+[![PHP Version](https://img.shields.io/packagist/php-v/our-edu/multi-tenant.svg?style=flat-square)](composer.json)
 [![Laravel Version](https://img.shields.io/badge/Laravel-9.x%20|%2010.x%20|%2011.x-red.svg?style=flat-square)](composer.json)
 
 A Laravel package for building multi-tenant applications. This package provides tenant context management, automatic query scoping, and model traits for seamless multi-tenancy support.
