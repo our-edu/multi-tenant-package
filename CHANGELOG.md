@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- **BREAKING:** `TenantResolver::resolveTenant()` changed to `resolveTenantId()` returning `?int` instead of `?Model`
+- **BREAKING:** `TenantContext` now stores `tenant_id` as `int` instead of tenant Model
+- **BREAKING:** Removed `getTenant()`, `setTenant()`, `setTenantById()` methods from TenantContext
+- **BREAKING:** Removed `runWithTenant()` and `runWithTenantId()` - use `runForTenant(int $tenantId, callable)` instead
+
+### Added
+- `UserSessionTenantResolver` - Gets tenant_id from `getSession()` helper function
+- `DomainTenantResolver` - Gets tenant_id by querying tenant table by domain
+- `ChainTenantResolver` - Chains multiple resolvers together (default)
+- `setTenantId(?int $tenantId)` method on TenantContext
+- `runForTenant(int $tenantId, callable $callback)` method on TenantContext
+
+
 ## [1.0.0] - 2026-01-12
 
 ### Added
@@ -23,14 +39,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Automatic tenant ID assignment on model creation/update
 - Custom tenant column support via `getTenantColumn()` method
 - Manual tenant context setting for jobs, commands, and tests
-- `setTenantById()` helper method
-- `runWithTenant()` and `runWithTenantId()` for scoped execution
-
-## [Unreleased]
-
-### Planned
-- TenantAwareJob trait for queue jobs
-- TenantAwareCommand trait for Artisan commands
-- TenantMessage DTO for message broker integration
-- SetTenantForJob middleware
 

@@ -22,7 +22,7 @@ This document summarizes all the test-related work completed for the multi-tenan
 **Tenancy Tests** (`tests/Tenancy/`)
 - ✅ `TenantContextTest.php` - 10 test methods
   - Tenant context resolution
-  - Tenant ID retrieval (UUID and primary key)
+  - Tenant ID retrieval
   - Manual tenant assignment
   - Lazy loading behavior
   - Context clearing

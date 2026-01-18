@@ -41,14 +41,14 @@ class TenantScopeTest extends TestCase
         $builder = Mockery::mock(Builder::class);
         $builder->shouldReceive('getModel')->andReturn($model);
         $builder->shouldReceive('where')
-            ->with('users.tenant_id', 'tenant-uuid-123')
+            ->with('users.tenant_id', 1)
             ->once()
             ->andReturnSelf();
 
         $this->context
             ->shouldReceive('getTenantId')
             ->once()
-            ->andReturn('tenant-uuid-123');
+            ->andReturn(1);
 
         $this->context
             ->shouldReceive('hasTenant')
@@ -89,14 +89,14 @@ class TenantScopeTest extends TestCase
         $builder = Mockery::mock(Builder::class);
         $builder->shouldReceive('getModel')->andReturn($model);
         $builder->shouldReceive('where')
-            ->with('accounts.account_id', 'account-uuid-456')
+            ->with('accounts.account_id', 2)
             ->once()
             ->andReturnSelf();
 
         $this->context
             ->shouldReceive('getTenantId')
             ->once()
-            ->andReturn('account-uuid-456');
+            ->andReturn(2);
 
         $this->context
             ->shouldReceive('hasTenant')
@@ -119,14 +119,14 @@ class TenantScopeTest extends TestCase
         $builder = Mockery::mock(Builder::class);
         $builder->shouldReceive('getModel')->andReturn($model);
         $builder->shouldReceive('where')
-            ->with('organizations.org_id', 'org-uuid-789')
+            ->with('organizations.org_id', 3)
             ->once()
             ->andReturnSelf();
 
         $this->context
             ->shouldReceive('getTenantId')
             ->once()
-            ->andReturn('org-uuid-789');
+            ->andReturn(3);
 
         $this->context
             ->shouldReceive('hasTenant')
@@ -153,7 +153,7 @@ class TenantScopeTest extends TestCase
         $this->context
             ->shouldReceive('getTenantId')
             ->once()
-            ->andReturn('tenant-uuid-123');
+            ->andReturn(1);
 
         $this->scope->apply($builder, $model);
 
@@ -172,7 +172,7 @@ class TenantScopeTest extends TestCase
         $this->context
             ->shouldReceive('getTenantId')
             ->once()
-            ->andReturn('tenant-uuid-123');
+            ->andReturn(1);
 
         $this->context
             ->shouldReceive('hasTenant')

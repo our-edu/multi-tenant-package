@@ -12,6 +12,7 @@ A Laravel package for building multi-tenant applications. This package provides 
 - **Tenant Context** - Centralized tenant state management across requests, jobs, and commands
 - **Automatic Query Scoping** - All queries automatically filtered by tenant
 - **Model Trait** - Simple `HasTenant` trait for tenant-aware models
+- **Built-in Resolvers** - Session and Domain resolvers included
 - **Flexible Resolution** - Implement your own tenant resolution strategy
 - **Middleware Support** - HTTP middleware for tenant resolution
 - **Auto-assignment** - Automatically sets tenant ID on model creation/update
@@ -19,6 +20,7 @@ A Laravel package for building multi-tenant applications. This package provides 
 - **Customizable** - Override tenant column names per model
 - **Queue Support** - Maintain tenant context in queued jobs
 - **Command Support** - Run commands for specific tenants
+- **Laravel Octane Compatible** - Uses scoped bindings for request isolation
 
 ## Requirements
 
@@ -37,31 +39,51 @@ The package will auto-register its service provider and automatically publish th
 
 ## Quick Start
 
-### 1. Implement a Tenant Resolver
+### 1. Use Built-in Resolvers or Create Your Own
 
-Create a resolver that determines the current tenant:
+The package includes built-in resolvers that work with a `ChainTenantResolver`:
+
+**UserSessionTenantResolver** - Gets `tenant_id` from a configurable helper function (default: `getSession()`):
+```php
+// Configure the helper function name in config/multi-tenant.php
+'session' => [
+    'helper' => 'getSession',  // Your helper function name
+    'tenant_column' => 'tenant_id',
+],
+
+// Your helper function should return an object with tenant_id property
+function getSession() {
+    return app(SessionService::class)->getSession(); // Has tenant_id property
+}
+```
+
+**DomainTenantResolver** - Gets `tenant_id` by querying tenant table by domain:
+```php
+// Queries: SELECT id FROM tenants WHERE domain = 'school1.ouredu.com'
+```
+
+Or create your own resolver:
 
 ```php
 use Ouredu\MultiTenant\Contracts\TenantResolver;
 
 class AppTenantResolver implements TenantResolver
 {
-    public function resolveTenant(): ?Model
+    public function resolveTenantId(): ?int
     {
         // Resolve from authenticated user
-        return auth()->user()?->tenant;
+        return auth()->user()?->tenant_id;
         
         // Or from session
-        // return Tenant::find(session('tenant_id'));
+        // return session('tenant_id');
         
-        // Or from subdomain
-        // $subdomain = explode('.', request()->getHost())[0];
-        // return Tenant::where('subdomain', $subdomain)->first();
+        // Or from header
+        // return (int) request()->header('X-Tenant-ID');
     }
 }
 ```
 
-### 2. Register the Resolver
+### 2. Register the Resolver (optional, if using custom)
 
 In your `AppServiceProvider`:
 
@@ -96,11 +118,22 @@ The configuration file is automatically published to `config/multi-tenant.php`:
 
 ```php
 return [
-    // Your tenant model class
+    // Your tenant model class (used by DomainTenantResolver)
     'tenant_model' => App\Models\Tenant::class,
     
     // Default tenant column name
     'tenant_column' => 'tenant_id',
+    
+    // Session configuration (for UserSessionTenantResolver)
+    'session' => [
+        'helper' => 'getSession',     // Helper function name to get session
+        'tenant_column' => 'tenant_id', // Tenant column on session object
+    ],
+    
+    // Domain configuration (for DomainTenantResolver)
+    'domain' => [
+        'column' => 'domain',  // Domain column on tenant model
+    ],
 ];
 ```
 
@@ -108,17 +141,14 @@ return [
 
 ### Tenant Context
 
-Access the current tenant anywhere in your application:
+Access the current tenant ID anywhere in your application:
 
 ```php
 use Ouredu\MultiTenant\Tenancy\TenantContext;
 
 $context = app(TenantContext::class);
 
-// Get current tenant
-$tenant = $context->getTenant();
-
-// Get tenant ID
+// Get current tenant ID
 $tenantId = $context->getTenantId();
 
 // Check if tenant exists
@@ -126,13 +156,12 @@ if ($context->hasTenant()) {
     // ...
 }
 
-// Manually set tenant (for testing, jobs, commands)
-$context->setTenant($tenant);
-$context->setTenantById($tenantId);
+// Manually set tenant ID (for testing, jobs, commands)
+$context->setTenantId($tenantId);
 
 // Run code in tenant context
-$context->runWithTenant($tenant, function ($tenant) {
-    // All queries scoped to $tenant
+$context->runForTenant($tenantId, function () {
+    // All queries scoped to this tenant
 });
 ```
 
@@ -184,7 +213,7 @@ For jobs that need tenant context, set the tenant ID in the job:
 ```php
 class ProcessInvoice implements ShouldQueue
 {
-    public ?string $tenantId = null;
+    public ?int $tenantId = null;
 
     public function __construct(public Invoice $invoice)
     {
@@ -194,7 +223,9 @@ class ProcessInvoice implements ShouldQueue
     public function handle(): void
     {
         // Restore tenant context
-        app(TenantContext::class)->setTenantById($this->tenantId);
+        if ($this->tenantId) {
+            app(TenantContext::class)->setTenantId($this->tenantId);
+        }
         
         // Process invoice...
     }
@@ -215,7 +246,7 @@ class GenerateReports extends Command
         $tenantId = $this->option('tenant');
         
         if ($tenantId) {
-            app(TenantContext::class)->setTenantById($tenantId);
+            app(TenantContext::class)->setTenantId((int) $tenantId);
         }
         
         // Generate reports...
@@ -231,21 +262,18 @@ class GenerateReports extends Command
 
 | Method | Description |
 |--------|-------------|
-| `getTenant(): ?Model` | Get the current tenant model |
-| `getTenantId(): ?string` | Get the current tenant ID |
+| `getTenantId(): ?int` | Get the current tenant ID |
 | `hasTenant(): bool` | Check if a tenant is set |
-| `setTenant(?Model $tenant): void` | Manually set the tenant |
-| `setTenantById(string $id): ?Model` | Set tenant by ID |
+| `setTenantId(?int $tenantId): void` | Manually set the tenant ID |
 | `clear(): void` | Clear the tenant context |
-| `runWithTenant(Model $tenant, callable $callback): mixed` | Run callback with tenant |
-| `runWithTenantId(string $id, callable $callback): mixed` | Run callback with tenant ID |
+| `runForTenant(int $tenantId, callable $callback): mixed` | Run callback with specific tenant |
 
 ### HasTenant Trait
 
 | Method | Description |
 |--------|-------------|
 | `tenant(): BelongsTo` | Relationship to tenant model |
-| `scopeForTenant($query, string $id): Builder` | Scope to specific tenant |
+| `scopeForTenant($query, int $id): Builder` | Scope to specific tenant |
 | `getTenantColumn(): string` | Get tenant column name (override) |
 
 ## Testing

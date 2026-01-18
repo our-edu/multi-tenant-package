@@ -9,7 +9,6 @@ declare(strict_types=1);
 
 namespace Ouredu\MultiTenant\Tenancy;
 
-use Illuminate\Database\Eloquent\Model;
 use Ouredu\MultiTenant\Contracts\TenantResolver;
 
 /**
@@ -17,15 +16,15 @@ use Ouredu\MultiTenant\Contracts\TenantResolver;
  *
  * Shared tenant context service used across the request / job / command
  * lifecycle. It relies on a TenantResolver implementation (bound in the
- * host application) to actually figure out who the current tenant is.
+ * host application) to actually figure out the current tenant ID.
  *
  * Responsibilities:
- * - Cache the current tenant model for the lifetime of the request/job
+ * - Cache the current tenant ID for the lifetime of the request/job
  * - Provide helper methods (getTenantId, hasTenant, clear, manual set)
  */
 class TenantContext
 {
-    private ?Model $tenant = null;
+    private ?int $tenantId = null;
 
     private bool $resolved = false;
 
@@ -35,38 +34,23 @@ class TenantContext
     }
 
     /**
-     * Get the current tenant model (or null if not resolved).
+     * Get the current tenant ID (or null if not resolved).
      */
-    public function getTenant(): ?Model
+    public function getTenantId(): ?int
     {
         if (! $this->resolved) {
             $this->resolve();
         }
 
-        return $this->tenant;
+        return $this->tenantId;
     }
 
     /**
-     * Get the current tenant ID (assumes primary key or uuid).
+     * Manually set the tenant ID (useful for tests, CLI, jobs, or messages).
      */
-    public function getTenantId(): ?string
+    public function setTenantId(?int $tenantId): void
     {
-        $tenant = $this->getTenant();
-
-        if (! $tenant) {
-            return null;
-        }
-
-        // Prefer uuid property if it exists, otherwise primary key
-        return $tenant->uuid ?? (string) $tenant->getKey();
-    }
-
-    /**
-     * Manually set the tenant model (useful for tests or CLI).
-     */
-    public function setTenant(?Model $tenant): void
-    {
-        $this->tenant = $tenant;
+        $this->tenantId = $tenantId;
         $this->resolved = true;
     }
 
@@ -75,7 +59,7 @@ class TenantContext
      */
     public function clear(): void
     {
-        $this->tenant = null;
+        $this->tenantId = null;
         $this->resolved = false;
     }
 
@@ -84,7 +68,30 @@ class TenantContext
      */
     public function hasTenant(): bool
     {
-        return $this->getTenant() !== null;
+        return $this->getTenantId() !== null;
+    }
+
+    /**
+     * Run a callback within a specific tenant context.
+     *
+     * @template TReturn
+     * @param int $tenantId
+     * @param callable(): TReturn $callback
+     * @return TReturn
+     */
+    public function runForTenant(int $tenantId, callable $callback): mixed
+    {
+        $previousTenantId = $this->tenantId;
+        $previousResolved = $this->resolved;
+
+        try {
+            $this->setTenantId($tenantId);
+
+            return $callback();
+        } finally {
+            $this->tenantId = $previousTenantId;
+            $this->resolved = $previousResolved;
+        }
     }
 
     /**
@@ -93,6 +100,6 @@ class TenantContext
     private function resolve(): void
     {
         $this->resolved = true;
-        $this->tenant = $this->resolver->resolveTenant();
+        $this->tenantId = $this->resolver->resolveTenantId();
     }
 }

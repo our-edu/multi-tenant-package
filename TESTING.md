@@ -287,8 +287,7 @@ protected function tearDown(): void
 ```php
 public function testGetTenantIdWithVariousInputs(): void
 {
-    // Test with UUID
-    // Test with primary key
+    // Test with integer ID
     // Test with null
     // Test with empty string
 }
@@ -297,13 +296,12 @@ public function testGetTenantIdWithVariousInputs(): void
 ### 6. Use Constants for Test Data
 
 ```php
-private const TEST_TENANT_UUID = 'test-uuid-123';
-private const TEST_TENANT_ID = '789';
+private const TEST_TENANT_ID = '1';
 
 public function testWithTestData(): void
 {
     $tenantId = $this->context->getTenantId();
-    $this->assertEquals(self::TEST_TENANT_UUID, $tenantId);
+    $this->assertEquals(self::TEST_TENANT_ID, $tenantId);
 }
 ```
 
