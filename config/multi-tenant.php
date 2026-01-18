@@ -86,4 +86,55 @@ return [
         */
         'column' => env('MULTI_TENANT_DOMAIN_COLUMN', 'domain'),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Tenant Tables
+    |--------------------------------------------------------------------------
+    |
+    | List of tables that require tenant_id column. Used by:
+    | - `php artisan tenant:migrate` command to add tenant_id column
+    | - Query listener to detect queries without tenant_id filter
+    |
+    */
+    'tables' => [
+        // Example:
+        // 'users',
+        // 'orders',
+        // 'invoices',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Query Listener
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for the database query listener that monitors queries
+    | and logs errors when a query is executed on a tenant table without
+    | a tenant_id filter.
+    |
+    */
+    'query_listener' => [
+        /*
+        |--------------------------------------------------------------------------
+        | Enable Query Listener
+        |--------------------------------------------------------------------------
+        |
+        | Set to true to enable the query listener. When enabled, the listener
+        | will log errors for queries that don't have a tenant_id filter.
+        |
+        */
+        'enabled' => env('MULTI_TENANT_QUERY_LISTENER_ENABLED', true),
+
+        /*
+        |--------------------------------------------------------------------------
+        | Log Channel
+        |--------------------------------------------------------------------------
+        |
+        | The log channel to use for logging missing tenant filter errors.
+        | Leave null to use the default log channel.
+        |
+        */
+        'log_channel' => env('MULTI_TENANT_QUERY_LISTENER_CHANNEL'),
+    ],
 ];

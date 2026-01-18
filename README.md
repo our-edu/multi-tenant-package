@@ -39,64 +39,21 @@ The package will auto-register its service provider and automatically publish th
 
 ## Quick Start
 
-### 1. Use Built-in Resolvers or Create Your Own
+### 1. Configure (Optional)
 
-The package includes built-in resolvers that work with a `ChainTenantResolver`:
+The package uses `ChainTenantResolver` by default, which tries resolvers in order:
+1. `UserSessionTenantResolver` - Gets `tenant_id` from `getSession()` helper
+2. `DomainTenantResolver` - Gets `tenant_id` by querying tenant table by domain
 
-**UserSessionTenantResolver** - Gets `tenant_id` from a configurable helper function (default: `getSession()`):
+Configure the session helper in `config/multi-tenant.php`:
 ```php
-// Configure the helper function name in config/multi-tenant.php
 'session' => [
-    'helper' => 'getSession',  // Your helper function name
-    'tenant_column' => 'tenant_id',
+    'helper' => 'getSession',      // Your helper function name
+    'tenant_column' => 'tenant_id', // Column on session object
 ],
-
-// Your helper function should return an object with tenant_id property
-function getSession() {
-    return app(SessionService::class)->getSession(); // Has tenant_id property
-}
 ```
 
-**DomainTenantResolver** - Gets `tenant_id` by querying tenant table by domain:
-```php
-// Queries: SELECT id FROM tenants WHERE domain = 'school1.ouredu.com'
-```
-
-Or create your own resolver:
-
-```php
-use Ouredu\MultiTenant\Contracts\TenantResolver;
-
-class AppTenantResolver implements TenantResolver
-{
-    public function resolveTenantId(): ?int
-    {
-        // Resolve from authenticated user
-        return auth()->user()?->tenant_id;
-        
-        // Or from session
-        // return session('tenant_id');
-        
-        // Or from header
-        // return (int) request()->header('X-Tenant-ID');
-    }
-}
-```
-
-### 2. Register the Resolver (optional, if using custom)
-
-In your `AppServiceProvider`:
-
-```php
-use Ouredu\MultiTenant\Contracts\TenantResolver;
-
-public function register(): void
-{
-    $this->app->bind(TenantResolver::class, AppTenantResolver::class);
-}
-```
-
-### 3. Add Trait to Models
+### 2. Add Trait to Models
 
 Add the `HasTenant` trait to models that should be tenant-scoped:
 
@@ -126,15 +83,57 @@ return [
     
     // Session configuration (for UserSessionTenantResolver)
     'session' => [
-        'helper' => 'getSession',     // Helper function name to get session
-        'tenant_column' => 'tenant_id', // Tenant column on session object
+        'helper' => 'getSession',     // Helper function name
+        'tenant_column' => 'tenant_id',
     ],
     
     // Domain configuration (for DomainTenantResolver)
     'domain' => [
-        'column' => 'domain',  // Domain column on tenant model
+        'column' => 'domain',
+    ],
+    
+    // Tables that require tenant_id (for query listener)
+    'tables' => [
+        // 'users',
+        // 'orders',
+    ],
+    
+    // Query listener (logs queries without tenant_id filter)
+    'query_listener' => [
+        'enabled' => true,
+        'log_channel' => null,  // null = default channel
     ],
 ];
+```
+
+## Query Listener
+
+The package includes a database query listener that logs errors when queries are executed on tenant tables without a `tenant_id` filter.
+
+### Configuration
+
+```php
+'tables' => ['users', 'orders', 'invoices'],
+
+'query_listener' => [
+    'enabled' => env('MULTI_TENANT_QUERY_LISTENER_ENABLED', true),
+    'log_channel' => env('MULTI_TENANT_QUERY_LISTENER_CHANNEL'),
+],
+```
+
+### Log Output
+
+When a query without tenant filter is detected:
+```json
+{
+    "message": "Query executed without tenant_id filter",
+    "context": {
+        "table": "orders",
+        "sql": "SELECT * FROM orders WHERE status = ?",
+        "bindings": ["pending"],
+        "tenant_id": 1
+    }
+}
 ```
 
 ## Usage

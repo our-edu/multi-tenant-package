@@ -10,8 +10,11 @@ declare(strict_types=1);
 namespace Ouredu\MultiTenant\Providers;
 
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Ouredu\MultiTenant\Contracts\TenantResolver;
+use Ouredu\MultiTenant\Listeners\TenantQueryListener;
 use Ouredu\MultiTenant\Resolvers\ChainTenantResolver;
 use Ouredu\MultiTenant\Tenancy\TenantContext;
 
@@ -21,17 +24,25 @@ class TenantServiceProvider extends ServiceProvider
     {
         $this->mergeConfigFrom(__DIR__ . '/../../config/multi-tenant.php', 'multi-tenant');
 
-        // Bind ChainTenantResolver as the default TenantResolver
-        // Uses bind() instead of singleton() for Octane compatibility
-        // Users can override this in their AppServiceProvider if needed
-        $this->app->bind(TenantResolver::class, ChainTenantResolver::class);
+        // Bind ChainTenantResolver as default TenantResolver (services can override)
+        $this->app->bindIf(TenantResolver::class, ChainTenantResolver::class);
 
+        // TenantContext is scoped (one instance per request) for Octane compatibility
         $this->app->scoped(TenantContext::class, function (Application $app): TenantContext {
             return new TenantContext($app->make(TenantResolver::class));
         });
     }
 
     public function boot(): void
+    {
+        $this->registerPublishing();
+        $this->registerQueryListener();
+    }
+
+    /**
+     * Register the package's publishable resources.
+     */
+    protected function registerPublishing(): void
     {
         $configPath = $this->configPath();
         $publishPath = $this->app->configPath('multi-tenant.php');
@@ -51,6 +62,16 @@ class TenantServiceProvider extends ServiceProvider
             $this->publishes([
                 $configPath => $publishPath,
             ], 'config');
+        }
+    }
+
+    /**
+     * Register the database query listener.
+     */
+    protected function registerQueryListener(): void
+    {
+        if (config('multi-tenant.query_listener.enabled', true)) {
+            Event::listen(QueryExecuted::class, TenantQueryListener::class);
         }
     }
 
