@@ -21,7 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `setTenantId(?int $tenantId)` method on TenantContext
 - `runForTenant(int $tenantId, callable $callback)` method on TenantContext
 - Configurable session helper function name via config
-- `tables` config option for query listener
+- `tenant:migrate` command to add tenant_id column to configured tables
+- `tables` config option to define tables that need tenant_id column
 - `query_listener` config option to enable/disable and set log channel
 
 

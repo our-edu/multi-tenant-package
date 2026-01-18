@@ -13,6 +13,7 @@ use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
+use Ouredu\MultiTenant\Commands\TenantMigrateCommand;
 use Ouredu\MultiTenant\Contracts\TenantResolver;
 use Ouredu\MultiTenant\Listeners\TenantQueryListener;
 use Ouredu\MultiTenant\Resolvers\ChainTenantResolver;
@@ -24,8 +25,10 @@ class TenantServiceProvider extends ServiceProvider
     {
         $this->mergeConfigFrom(__DIR__ . '/../../config/multi-tenant.php', 'multi-tenant');
 
-        // Bind ChainTenantResolver as default TenantResolver (services can override)
-        $this->app->bindIf(TenantResolver::class, ChainTenantResolver::class);
+        // Bind ChainTenantResolver as the default TenantResolver
+        // Uses bind() instead of singleton() for Octane compatibility
+        // Users can override this in their AppServiceProvider if needed
+        $this->app->bind(TenantResolver::class, ChainTenantResolver::class);
 
         // TenantContext is scoped (one instance per request) for Octane compatibility
         $this->app->scoped(TenantContext::class, function (Application $app): TenantContext {
@@ -36,7 +39,20 @@ class TenantServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->registerPublishing();
+        $this->registerCommands();
         $this->registerQueryListener();
+    }
+
+    /**
+     * Register the package's commands.
+     */
+    protected function registerCommands(): void
+    {
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                TenantMigrateCommand::class,
+            ]);
+        }
     }
 
     /**

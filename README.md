@@ -106,6 +106,21 @@ return [
 ];
 ```
 
+## Database Migration
+
+Add `tenant_id` column to your configured tables:
+
+```bash
+# Add tenant_id to all configured tables
+php artisan tenant:migrate
+
+# Add tenant_id to specific tables
+php artisan tenant:migrate --table=users --table=orders
+
+# Remove tenant_id from tables (rollback)
+php artisan tenant:migrate --rollback
+```
+
 ## Query Listener
 
 The package includes a database query listener that logs errors when queries are executed on tenant tables without a `tenant_id` filter.
