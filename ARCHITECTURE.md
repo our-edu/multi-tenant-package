@@ -644,8 +644,12 @@ multi-tenant-package/
 ├── config/
 │   └── multi-tenant.php          # Package configuration
 ├── src/
+│   ├── Commands/
+│   │   └── TenantMigrateCommand.php  # Add tenant_id to tables
 │   ├── Contracts/
 │   │   └── TenantResolver.php    # Interface for tenant resolution
+│   ├── Listeners/
+│   │   └── TenantQueryListener.php   # Logs queries without tenant_id
 │   ├── Middleware/
 │   │   └── TenantMiddleware.php  # HTTP middleware
 │   ├── Providers/
@@ -990,6 +994,18 @@ return [
     'domain' => [
         'column' => 'domain',  // Domain column on tenant model
     ],
+    
+    // Tables that require tenant_id (for migration and query listener)
+    'tables' => [
+        // 'users',
+        // 'orders',
+    ],
+    
+    // Query listener (logs queries without tenant_id filter)
+    'query_listener' => [
+        'enabled' => true,
+        'log_channel' => null,  // null = default channel
+    ],
 ];
 ```
 
@@ -1005,6 +1021,8 @@ return [
 | `DomainTenantResolver` | Resolves tenant_id by domain query |
 | `HasTenant` | Model trait for tenant relationship |
 | `TenantMiddleware` | HTTP request middleware |
+| `TenantMigrateCommand` | Artisan command to add tenant_id to tables |
+| `TenantQueryListener` | Logs queries without tenant_id filter |
 
 ### Resolver Registration Quick Reference
 
