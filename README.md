@@ -1,6 +1,6 @@
 # Laravel Multi-Tenant
 
-[![Packagist Version](https://img.shields.io/packagist/v/our-edu/multi-tenant.svg?style=flat-square)](https://packagist.org/packages/ouredu/multi-tenant)
+[![Packagist Version](https://img.shields.io/packagist/v/our-edu/multi-tenant.svg?style=flat-square)](https://packagist.org/packages/our-edu/multi-tenant)
 [![License](https://img.shields.io/packagist/l/our-edu/multi-tenant.svg?style=flat-square)](LICENSE)
 [![PHP Version](https://img.shields.io/packagist/php-v/our-edu/multi-tenant.svg?style=flat-square)](composer.json)
 [![Laravel Version](https://img.shields.io/badge/Laravel-9.x%20|%2010.x%20|%2011.x-red.svg?style=flat-square)](composer.json)
