@@ -55,6 +55,8 @@ Configure the session helper in `config/multi-tenant.php`:
 
 ### 2. Add Trait to Models
 
+**Option A: Use HasTenant Trait Manually**
+
 Add the `HasTenant` trait to models that should be tenant-scoped:
 
 ```php
@@ -67,7 +69,31 @@ class Project extends Model
 }
 ```
 
-That's it! All queries on `Project` will now be automatically scoped to the current tenant.
+**Option B: Use Artisan Command (Recommended)**
+
+Configure your tables and run the command to automatically add the trait:
+
+```php
+// config/multi-tenant.php
+'tables' => [
+    'projects' => \App\Models\Project::class,
+    'invoices' => \App\Models\Invoice::class,
+    'orders' => \App\Models\Order::class,
+],
+```
+
+```bash
+# Add HasTenant trait to all configured table models
+php artisan tenant:add-trait
+
+# Preview changes without modifying files
+php artisan tenant:add-trait --dry-run
+
+# Add trait to specific tables only
+php artisan tenant:add-trait --table=projects --table=invoices
+```
+
+That's it! All queries on configured models will now be automatically scoped to the current tenant.
 
 ## Configuration
 
@@ -92,10 +118,10 @@ return [
         'column' => 'domain',
     ],
     
-    // Tables that require tenant_id (for query listener)
+    // Tables mapped to models (for migration, trait command, and query listener)
     'tables' => [
-        // 'users',
-        // 'orders',
+        // 'users' => \App\Models\User::class,
+        // 'orders' => \App\Models\Order::class,
     ],
     
     // Query listener (logs queries without tenant_id filter)

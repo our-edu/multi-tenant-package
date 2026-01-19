@@ -79,7 +79,10 @@ class TenantMigrateCommand extends Command
             return $optionTables;
         }
 
-        return config('multi-tenant.tables', []);
+        $tables = config('multi-tenant.tables', []);
+
+        // Return table names (keys) from the associative array
+        return array_keys($tables);
     }
 
     /**

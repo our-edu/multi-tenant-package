@@ -64,7 +64,7 @@ class TenantQueryListenerTest extends TestCase
     public function testSkipsQueryWithTenantFilter(): void
     {
         config(['multi-tenant.query_listener.enabled' => true]);
-        config(['multi-tenant.tables' => ['users']]);
+        config(['multi-tenant.tables' => ['users' => 'App\\Models\\User']]);
         config(['multi-tenant.tenant_column' => 'tenant_id']);
 
         $context = Mockery::mock(TenantContext::class);
@@ -81,7 +81,7 @@ class TenantQueryListenerTest extends TestCase
     public function testSkipsQueryOnNonTenantTable(): void
     {
         config(['multi-tenant.query_listener.enabled' => true]);
-        config(['multi-tenant.tables' => ['orders']]);
+        config(['multi-tenant.tables' => ['orders' => 'App\\Models\\Order']]);
 
         $context = Mockery::mock(TenantContext::class);
         $context->shouldReceive('hasTenant')->andReturn(true);
@@ -97,7 +97,7 @@ class TenantQueryListenerTest extends TestCase
     public function testDetectsQueryWithoutTenantFilter(): void
     {
         config(['multi-tenant.query_listener.enabled' => true]);
-        config(['multi-tenant.tables' => ['users']]);
+        config(['multi-tenant.tables' => ['users' => 'App\\Models\\User']]);
         config(['multi-tenant.tenant_column' => 'tenant_id']);
 
         $context = Mockery::mock(TenantContext::class);
@@ -130,7 +130,7 @@ class TenantQueryListenerTest extends TestCase
     public function testAcceptsQueryWithTenantFilterInAndClause(): void
     {
         config(['multi-tenant.query_listener.enabled' => true]);
-        config(['multi-tenant.tables' => ['users']]);
+        config(['multi-tenant.tables' => ['users' => 'App\\Models\\User']]);
         config(['multi-tenant.tenant_column' => 'tenant_id']);
 
         $context = Mockery::mock(TenantContext::class);
@@ -147,7 +147,7 @@ class TenantQueryListenerTest extends TestCase
     public function testDetectsTableInJoinQuery(): void
     {
         config(['multi-tenant.query_listener.enabled' => true]);
-        config(['multi-tenant.tables' => ['orders']]);
+        config(['multi-tenant.tables' => ['orders' => 'App\\Models\\Order']]);
         config(['multi-tenant.tenant_column' => 'tenant_id']);
 
         $context = Mockery::mock(TenantContext::class);
@@ -173,7 +173,7 @@ class TenantQueryListenerTest extends TestCase
     public function testDetectsTableInUpdateQuery(): void
     {
         config(['multi-tenant.query_listener.enabled' => true]);
-        config(['multi-tenant.tables' => ['users']]);
+        config(['multi-tenant.tables' => ['users' => 'App\\Models\\User']]);
         config(['multi-tenant.tenant_column' => 'tenant_id']);
 
         $context = Mockery::mock(TenantContext::class);
@@ -206,7 +206,7 @@ class TenantQueryListenerTest extends TestCase
     public function testDetectsTableInDeleteQuery(): void
     {
         config(['multi-tenant.query_listener.enabled' => true]);
-        config(['multi-tenant.tables' => ['users']]);
+        config(['multi-tenant.tables' => ['users' => 'App\\Models\\User']]);
         config(['multi-tenant.tenant_column' => 'tenant_id']);
 
         $context = Mockery::mock(TenantContext::class);

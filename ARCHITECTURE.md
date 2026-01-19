@@ -439,6 +439,27 @@ class Payment extends Model
 }
 ```
 
+**Automatic Trait Addition via Command:**
+
+Instead of manually adding the trait to each model, use the artisan command:
+
+```php
+// Configure tables in config/multi-tenant.php
+'tables' => [
+    'payments' => \App\Models\Payment::class,
+    'invoices' => \App\Models\Invoice::class,
+    'orders' => \App\Models\Order::class,
+],
+```
+
+```bash
+# Run command to add HasTenant trait to all models
+php artisan tenant:add-trait
+
+# Preview changes first
+php artisan tenant:add-trait --dry-run
+```
+
 **Features:**
 - `tenant()` - BelongsTo relationship
 - `scopeForTenant($query, $tenantId)` - Query scope
@@ -645,6 +666,7 @@ multi-tenant-package/
 │   └── multi-tenant.php          # Package configuration
 ├── src/
 │   ├── Commands/
+│   │   ├── TenantAddTraitCommand.php # Add HasTenant trait to models
 │   │   └── TenantMigrateCommand.php  # Add tenant_id to tables
 │   ├── Contracts/
 │   │   └── TenantResolver.php    # Interface for tenant resolution
@@ -995,10 +1017,11 @@ return [
         'column' => 'domain',  // Domain column on tenant model
     ],
     
-    // Tables that require tenant_id (for migration and query listener)
+    // Tables mapped to models
+    // Used by: tenant:migrate, tenant:add-trait, query listener
     'tables' => [
-        // 'users',
-        // 'orders',
+        // 'users' => \App\Models\User::class,
+        // 'orders' => \App\Models\Order::class,
     ],
     
     // Query listener (logs queries without tenant_id filter)
@@ -1019,6 +1042,11 @@ return [
 | `ChainTenantResolver` | Chains multiple resolvers (default) |
 | `UserSessionTenantResolver` | Resolves tenant_id from getSession() |
 | `DomainTenantResolver` | Resolves tenant_id by domain query |
+| `HasTenant` | Model trait for tenant relationship |
+| `TenantMiddleware` | HTTP request middleware |
+| `TenantMigrateCommand` | Artisan command to add tenant_id to tables |
+| `TenantAddTraitCommand` | Artisan command to add HasTenant trait to models |
+| `TenantQueryListener` | Logs queries without tenant_id filter |
 | `HasTenant` | Model trait for tenant relationship |
 | `TenantMiddleware` | HTTP request middleware |
 | `TenantMigrateCommand` | Artisan command to add tenant_id to tables |

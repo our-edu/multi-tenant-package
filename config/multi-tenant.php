@@ -92,16 +92,19 @@ return [
     | Tenant Tables
     |--------------------------------------------------------------------------
     |
-    | List of tables that require tenant_id column. Used by:
+    | Associative array mapping table names to model classes.
+    | Used by:
     | - `php artisan tenant:migrate` command to add tenant_id column
+    | - `php artisan tenant:add-trait` command to add HasTenant trait to models
     | - Query listener to detect queries without tenant_id filter
+    |
+    | Format: 'table_name' => \App\Models\ModelClass::class
     |
     */
     'tables' => [
-        // Example:
-        // 'users',
-        // 'orders',
-        // 'invoices',
+        // 'users' => \App\Models\User::class,
+        // 'orders' => \App\Models\Order::class,
+        // 'invoices' => \App\Models\Invoice::class,
     ],
 
     /*
