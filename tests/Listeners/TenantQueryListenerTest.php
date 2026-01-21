@@ -298,6 +298,69 @@ class TenantQueryListenerTest extends TestCase
         $this->assertFalse($testListener->logCalled);
     }
 
+    public function testUpdateByUuidPrimaryKeyDoesNotLogError(): void
+    {
+        config(['multi-tenant.query_listener.enabled' => true]);
+        config(['multi-tenant.tables' => ['users' => 'App\\Models\\User']]);
+        config(['multi-tenant.tenant_column' => 'tenant_id']);
+        config(['multi-tenant.query_listener.primary_keys' => ['id', 'uuid']]);
+
+        $context = Mockery::mock(TenantContext::class);
+        $context->shouldReceive('hasTenant')->andReturn(true);
+
+        $testListener = new class ($context) extends TenantQueryListener {
+            public bool $logCalled = false;
+
+            protected function queryInvolvesTable(string $sql, string $table): bool
+            {
+                return str_contains(strtolower($sql), 'update ' . $table);
+            }
+
+            protected function logMissingTenantFilter(string $sql, string $table, QueryExecuted $event): void
+            {
+                $this->logCalled = true;
+            }
+        };
+
+        // UPDATE by uuid primary key should NOT log error
+        $event = $this->createQueryEvent('UPDATE users SET status = ? WHERE uuid = ?');
+
+        $testListener->handle($event);
+
+        $this->assertFalse($testListener->logCalled);
+    }
+
+    public function testSkipsModelWithWithoutTenantScopeProperty(): void
+    {
+        config(['multi-tenant.query_listener.enabled' => true]);
+        config(['multi-tenant.tables' => ['global_settings' => GlobalSettingStub::class]]);
+        config(['multi-tenant.tenant_column' => 'tenant_id']);
+
+        $context = Mockery::mock(TenantContext::class);
+        $context->shouldReceive('hasTenant')->andReturn(true);
+
+        $testListener = new class ($context) extends TenantQueryListener {
+            public bool $logCalled = false;
+
+            protected function queryInvolvesTable(string $sql, string $table): bool
+            {
+                return str_contains(strtolower($sql), $table);
+            }
+
+            protected function logMissingTenantFilter(string $sql, string $table, QueryExecuted $event): void
+            {
+                $this->logCalled = true;
+            }
+        };
+
+        // Query on table with model that has $withoutTenantScope = true should NOT log error
+        $event = $this->createQueryEvent('SELECT * FROM global_settings WHERE key = ?');
+
+        $testListener->handle($event);
+
+        $this->assertFalse($testListener->logCalled);
+    }
+
     /**
      * Create a QueryExecuted event.
      */
@@ -313,4 +376,12 @@ class TenantQueryListenerTest extends TestCase
             $connection
         );
     }
+}
+
+/**
+ * Stub model with $withoutTenantScope = true for testing.
+ */
+class GlobalSettingStub
+{
+    public bool $withoutTenantScope = true;
 }

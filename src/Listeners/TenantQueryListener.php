@@ -12,6 +12,7 @@ namespace Ouredu\MultiTenant\Listeners;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\Log;
 use Ouredu\MultiTenant\Tenancy\TenantContext;
+use ReflectionClass;
 
 /**
  * TenantQueryListener
@@ -42,10 +43,15 @@ class TenantQueryListener
         }
 
         $sql = $event->sql;
-        $tables = $this->getTenantTables();
+        $tablesConfig = $this->getTenantTablesConfig();
 
         // Check if query involves tenant tables
-        foreach ($tables as $table) {
+        foreach ($tablesConfig as $table => $modelClass) {
+            // Skip if model is excluded from tenant scope
+            if ($this->isModelExcludedFromTenantScope($modelClass)) {
+                continue;
+            }
+
             if ($this->queryInvolvesTable($sql, $table) && ! $this->queryHasTenantFilter($sql)) {
                 $this->logMissingTenantFilter($sql, $table, $event);
 
@@ -63,14 +69,32 @@ class TenantQueryListener
     }
 
     /**
-     * Get the list of tenant-scoped tables.
+     * Get the tenant tables configuration (table => model class).
+     *
+     * @return array<string, string>
      */
-    protected function getTenantTables(): array
+    protected function getTenantTablesConfig(): array
     {
-        $tables = config('multi-tenant.tables', []);
+        return config('multi-tenant.tables', []);
+    }
 
-        // Return table names (keys) from the associative array
-        return array_keys($tables);
+    /**
+     * Check if a model is excluded from tenant scope.
+     */
+    protected function isModelExcludedFromTenantScope(string $modelClass): bool
+    {
+        if (! class_exists($modelClass)) {
+            return false;
+        }
+
+        // Check if model has $withoutTenantScope property set to true
+        if (property_exists($modelClass, 'withoutTenantScope')) {
+            $defaults = (new ReflectionClass($modelClass))->getDefaultProperties();
+
+            return $defaults['withoutTenantScope'] ?? false;
+        }
+
+        return false;
     }
 
     /**

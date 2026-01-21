@@ -154,13 +154,25 @@ The package includes a database query listener that logs errors when queries are
 ### Configuration
 
 ```php
-'tables' => ['users', 'orders', 'invoices'],
+'tables' => [
+    'users' => \App\Models\User::class,
+    'orders' => \App\Models\Order::class,
+],
 
 'query_listener' => [
     'enabled' => env('MULTI_TENANT_QUERY_LISTENER_ENABLED', true),
     'log_channel' => env('MULTI_TENANT_QUERY_LISTENER_CHANNEL'),
+    'primary_keys' => ['id', 'uuid'],  // Primary key columns to skip
 ],
 ```
+
+### Smart Detection
+
+The query listener is smart about detecting safe queries:
+
+- **Primary Key Operations**: UPDATE/DELETE by `id` or `uuid` are considered safe (model was already loaded with tenant scope)
+- **Excluded Models**: Models with `$withoutTenantScope = true` are skipped
+- **Configurable Primary Keys**: Add custom primary key columns to `primary_keys` config
 
 ### Log Output
 
@@ -172,7 +184,9 @@ When a query without tenant filter is detected:
         "table": "orders",
         "sql": "SELECT * FROM orders WHERE status = ?",
         "bindings": ["pending"],
-        "tenant_id": 1
+        "tenant_id": 1,
+        "file": "/app/Http/Controllers/OrderController.php",
+        "line": 45
     }
 }
 ```
