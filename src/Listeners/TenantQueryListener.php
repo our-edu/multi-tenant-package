@@ -104,25 +104,72 @@ class TenantQueryListener
     }
 
     /**
-     * Check if the query has a tenant_id filter.
+     * Check if the query has a tenant_id filter or is a safe primary key operation.
+     *
+     * UPDATE/DELETE queries by primary key (id) are considered safe because
+     * the model was already loaded with tenant scope applied.
      */
     protected function queryHasTenantFilter(string $sql): bool
     {
         $tenantColumn = $this->getTenantColumn();
 
-        $patterns = [
+        // Check for tenant_id in WHERE clause
+        $tenantPatterns = [
             '/\bwhere\b.*\b' . preg_quote($tenantColumn, '/') . '\b/i',
             '/\band\b.*\b' . preg_quote($tenantColumn, '/') . '\b/i',
             '/\b' . preg_quote($tenantColumn, '/') . '\s*=/i',
         ];
 
-        foreach ($patterns as $pattern) {
+        foreach ($tenantPatterns as $pattern) {
             if (preg_match($pattern, $sql)) {
                 return true;
             }
         }
 
+        // Check if this is an UPDATE/DELETE by primary key (id)
+        // These are safe because the model was loaded with tenant scope
+        if ($this->isUpdateOrDeleteByPrimaryKey($sql)) {
+            return true;
+        }
+
         return false;
+    }
+
+    /**
+     * Check if the query is an UPDATE or DELETE by primary key.
+     *
+     * When Eloquent updates/deletes a model, it uses WHERE id = ? or WHERE uuid = ?
+     * The model was already loaded with tenant scope, so this is safe.
+     */
+    protected function isUpdateOrDeleteByPrimaryKey(string $sql): bool
+    {
+        // Common primary key column names
+        $primaryKeys = $this->getPrimaryKeyColumns();
+
+        foreach ($primaryKeys as $pk) {
+            $patterns = [
+                '/\bupdate\b.+\bwhere\b\s+[`"\']?' . preg_quote($pk, '/') . '[`"\']?\s*=\s*\?/i',
+                '/\bdelete\b.+\bwhere\b\s+[`"\']?' . preg_quote($pk, '/') . '[`"\']?\s*=\s*\?/i',
+            ];
+
+            foreach ($patterns as $pattern) {
+                if (preg_match($pattern, $sql)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Get the list of primary key column names to check.
+     *
+     * @return array<string>
+     */
+    protected function getPrimaryKeyColumns(): array
+    {
+        return config('multi-tenant.query_listener.primary_keys', ['id', 'uuid']);
     }
 
     /**

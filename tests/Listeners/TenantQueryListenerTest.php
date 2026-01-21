@@ -196,7 +196,7 @@ class TenantQueryListenerTest extends TestCase
             }
         };
 
-        $event = $this->createQueryEvent('UPDATE users SET status = ? WHERE id = ?');
+        $event = $this->createQueryEvent('UPDATE users SET status = ? WHERE status = ?');
 
         $testListener->handle($event);
 
@@ -229,11 +229,73 @@ class TenantQueryListenerTest extends TestCase
             }
         };
 
-        $event = $this->createQueryEvent('DELETE FROM users WHERE id = ?');
+        $event = $this->createQueryEvent('DELETE FROM users WHERE status = ?');
 
         $testListener->handle($event);
 
         $this->assertTrue($testListener->logCalled);
+    }
+
+    public function testUpdateByPrimaryKeyDoesNotLogError(): void
+    {
+        config(['multi-tenant.query_listener.enabled' => true]);
+        config(['multi-tenant.tables' => ['users' => 'App\\Models\\User']]);
+        config(['multi-tenant.tenant_column' => 'tenant_id']);
+
+        $context = Mockery::mock(TenantContext::class);
+        $context->shouldReceive('hasTenant')->andReturn(true);
+
+        $testListener = new class ($context) extends TenantQueryListener {
+            public bool $logCalled = false;
+
+            protected function queryInvolvesTable(string $sql, string $table): bool
+            {
+                return str_contains(strtolower($sql), 'update ' . $table);
+            }
+
+            protected function logMissingTenantFilter(string $sql, string $table, QueryExecuted $event): void
+            {
+                $this->logCalled = true;
+            }
+        };
+
+        // UPDATE by primary key should NOT log error
+        $event = $this->createQueryEvent('UPDATE users SET status = ? WHERE id = ?');
+
+        $testListener->handle($event);
+
+        $this->assertFalse($testListener->logCalled);
+    }
+
+    public function testDeleteByPrimaryKeyDoesNotLogError(): void
+    {
+        config(['multi-tenant.query_listener.enabled' => true]);
+        config(['multi-tenant.tables' => ['users' => 'App\\Models\\User']]);
+        config(['multi-tenant.tenant_column' => 'tenant_id']);
+
+        $context = Mockery::mock(TenantContext::class);
+        $context->shouldReceive('hasTenant')->andReturn(true);
+
+        $testListener = new class ($context) extends TenantQueryListener {
+            public bool $logCalled = false;
+
+            protected function queryInvolvesTable(string $sql, string $table): bool
+            {
+                return str_contains(strtolower($sql), 'delete from ' . $table);
+            }
+
+            protected function logMissingTenantFilter(string $sql, string $table, QueryExecuted $event): void
+            {
+                $this->logCalled = true;
+            }
+        };
+
+        // DELETE by primary key should NOT log error
+        $event = $this->createQueryEvent('DELETE FROM users WHERE id = ?');
+
+        $testListener->handle($event);
+
+        $this->assertFalse($testListener->logCalled);
     }
 
     /**
