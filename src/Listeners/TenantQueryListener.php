@@ -171,6 +171,7 @@ class TenantQueryListener
             foreach ($skipPatterns as $pattern) {
                 if (str_contains($frame['file'], $pattern)) {
                     $shouldSkip = true;
+
                     break;
                 }
             }
