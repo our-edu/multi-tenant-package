@@ -133,6 +133,8 @@ class TenantQueryListener
         $channel = config('multi-tenant.query_listener.log_channel');
         $logger = $channel ? Log::channel($channel) : Log::getFacadeRoot();
 
+        $source = $this->getQuerySource();
+
         $logger->error('Query executed without tenant_id filter', [
             'table' => $table,
             'sql' => $sql,
@@ -140,6 +142,50 @@ class TenantQueryListener
             'time' => $event->time,
             'connection' => $event->connectionName,
             'tenant_id' => $this->context->getTenantId(),
+            'file' => $source['file'],
+            'line' => $source['line'],
         ]);
+    }
+
+    /**
+     * Get the source file and line where the query originated.
+     */
+    protected function getQuerySource(): array
+    {
+        $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 50);
+
+        // Skip framework and package files to find the actual source
+        $skipPatterns = [
+            '/vendor/',
+            '/Illuminate/',
+            '/Database/',
+            '/TenantQueryListener/',
+        ];
+
+        foreach ($trace as $frame) {
+            if (! isset($frame['file'])) {
+                continue;
+            }
+
+            $shouldSkip = false;
+            foreach ($skipPatterns as $pattern) {
+                if (str_contains($frame['file'], $pattern)) {
+                    $shouldSkip = true;
+                    break;
+                }
+            }
+
+            if (! $shouldSkip) {
+                return [
+                    'file' => $frame['file'],
+                    'line' => $frame['line'] ?? 0,
+                ];
+            }
+        }
+
+        return [
+            'file' => 'unknown',
+            'line' => 0,
+        ];
     }
 }
