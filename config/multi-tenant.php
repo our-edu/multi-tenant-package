@@ -139,5 +139,17 @@ return [
         |
         */
         'log_channel' => env('MULTI_TENANT_QUERY_LISTENER_CHANNEL'),
+
+        /*
+        |--------------------------------------------------------------------------
+        | Primary Key Columns
+        |--------------------------------------------------------------------------
+        |
+        | List of column names used as primary keys in your tables.
+        | UPDATE/DELETE queries using these columns in WHERE clause are considered
+        | safe because the model was already loaded with tenant scope.
+        |
+        */
+        'primary_keys' => ['id', 'uuid'],
     ],
 ];

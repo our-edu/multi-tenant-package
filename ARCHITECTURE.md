@@ -1028,6 +1028,7 @@ return [
     'query_listener' => [
         'enabled' => true,
         'log_channel' => null,  // null = default channel
+        'primary_keys' => ['id', 'uuid'],  // UPDATE/DELETE by these keys are safe
     ],
 ];
 ```
