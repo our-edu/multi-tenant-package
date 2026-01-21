@@ -272,6 +272,43 @@ class ProcessInvoice implements ShouldQueue
 }
 ```
 
+### Event/Message Listeners
+
+For listeners that receive messages with tenant context, use the `SetsTenantFromPayload` trait:
+
+```php
+use Ouredu\MultiTenant\Traits\SetsTenantFromPayload;
+
+class PaymentCreatedListener
+{
+    use SetsTenantFromPayload;
+
+    public function handle(PaymentCreatedEvent $event): void
+    {
+        // Set tenant from message payload
+        // Throws TenantNotFoundException if tenant_id not found and fallback disabled
+        $this->setTenantFromPayload($event->payload);
+
+        // Now all queries will be tenant-scoped
+        $order = Order::find($event->orderId);
+    }
+}
+```
+
+Configure the listener fallback behavior in `config/multi-tenant.php`:
+
+```php
+'listener' => [
+    // Fallback to database when tenant_id not in payload (queries where is_active = true)
+    'fallback_to_database' => env('MULTI_TENANT_LISTENER_FALLBACK_DB', false),
+],
+```
+
+The trait works with both array and object payloads:
+- First checks if `tenant_id` exists in the payload
+- If not found and `fallback_to_database` is true, queries tenant table where `is_active = true`
+- If fallback is disabled or no active tenant found, throws `TenantNotFoundException`
+
 ### Artisan Commands
 
 Run commands for specific tenants:
@@ -302,7 +339,7 @@ class GenerateReports extends Command
 
 | Method | Description |
 |--------|-------------|
-| `getTenantId(): ?int` | Get the current tenant ID |
+| `getTenantId(): int` | Get the current tenant ID (throws `TenantNotFoundException` if not resolved) |
 | `hasTenant(): bool` | Check if a tenant is set |
 | `setTenantId(?int $tenantId): void` | Manually set the tenant ID |
 | `clear(): void` | Clear the tenant context |
@@ -315,6 +352,12 @@ class GenerateReports extends Command
 | `tenant(): BelongsTo` | Relationship to tenant model |
 | `scopeForTenant($query, int $id): Builder` | Scope to specific tenant |
 | `getTenantColumn(): string` | Get tenant column name (override) |
+
+### SetsTenantFromPayload Trait
+
+| Method | Description |
+|--------|-------------|
+| `setTenantFromPayload(array\|object $payload): void` | Set tenant context from payload, throws TenantNotFoundException if not found |
 
 ## Testing
 
