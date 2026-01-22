@@ -111,12 +111,13 @@ class TenantQueryListenerTest extends TestCase
 
             public array $logData = [];
 
-            protected function logMissingTenantFilter(string $sql, string $table, QueryExecuted $event): void
+            protected function logMissingTenantFilter(string $sql, string $table, string $operation, QueryExecuted $event): void
             {
                 $this->logCalled = true;
                 $this->logData = [
                     'sql' => $sql,
                     'table' => $table,
+                    'operation' => $operation,
                 ];
             }
         };
@@ -125,6 +126,7 @@ class TenantQueryListenerTest extends TestCase
 
         $this->assertTrue($testListener->logCalled);
         $this->assertEquals('users', $testListener->logData['table']);
+        $this->assertEquals('select', $testListener->logData['operation']);
     }
 
     public function testAcceptsQueryWithTenantFilterInAndClause(): void
@@ -157,7 +159,7 @@ class TenantQueryListenerTest extends TestCase
         $testListener = new class ($context) extends TenantQueryListener {
             public bool $logCalled = false;
 
-            protected function logMissingTenantFilter(string $sql, string $table, QueryExecuted $event): void
+            protected function logMissingTenantFilter(string $sql, string $table, string $operation, QueryExecuted $event): void
             {
                 $this->logCalled = true;
             }
@@ -184,13 +186,7 @@ class TenantQueryListenerTest extends TestCase
         $testListener = new class ($context) extends TenantQueryListener {
             public bool $logCalled = false;
 
-            protected function queryInvolvesTable(string $sql, string $table): bool
-            {
-                // Force match for testing
-                return str_contains(strtolower($sql), 'update ' . $table);
-            }
-
-            protected function logMissingTenantFilter(string $sql, string $table, QueryExecuted $event): void
+            protected function logMissingTenantFilter(string $sql, string $table, string $operation, QueryExecuted $event): void
             {
                 $this->logCalled = true;
             }
@@ -217,13 +213,7 @@ class TenantQueryListenerTest extends TestCase
         $testListener = new class ($context) extends TenantQueryListener {
             public bool $logCalled = false;
 
-            protected function queryInvolvesTable(string $sql, string $table): bool
-            {
-                // Force match for testing
-                return str_contains(strtolower($sql), 'delete from ' . $table);
-            }
-
-            protected function logMissingTenantFilter(string $sql, string $table, QueryExecuted $event): void
+            protected function logMissingTenantFilter(string $sql, string $table, string $operation, QueryExecuted $event): void
             {
                 $this->logCalled = true;
             }
@@ -248,12 +238,7 @@ class TenantQueryListenerTest extends TestCase
         $testListener = new class ($context) extends TenantQueryListener {
             public bool $logCalled = false;
 
-            protected function queryInvolvesTable(string $sql, string $table): bool
-            {
-                return str_contains(strtolower($sql), 'update ' . $table);
-            }
-
-            protected function logMissingTenantFilter(string $sql, string $table, QueryExecuted $event): void
+            protected function logMissingTenantFilter(string $sql, string $table, string $operation, QueryExecuted $event): void
             {
                 $this->logCalled = true;
             }
@@ -279,12 +264,7 @@ class TenantQueryListenerTest extends TestCase
         $testListener = new class ($context) extends TenantQueryListener {
             public bool $logCalled = false;
 
-            protected function queryInvolvesTable(string $sql, string $table): bool
-            {
-                return str_contains(strtolower($sql), 'delete from ' . $table);
-            }
-
-            protected function logMissingTenantFilter(string $sql, string $table, QueryExecuted $event): void
+            protected function logMissingTenantFilter(string $sql, string $table, string $operation, QueryExecuted $event): void
             {
                 $this->logCalled = true;
             }
@@ -311,12 +291,7 @@ class TenantQueryListenerTest extends TestCase
         $testListener = new class ($context) extends TenantQueryListener {
             public bool $logCalled = false;
 
-            protected function queryInvolvesTable(string $sql, string $table): bool
-            {
-                return str_contains(strtolower($sql), 'update ' . $table);
-            }
-
-            protected function logMissingTenantFilter(string $sql, string $table, QueryExecuted $event): void
+            protected function logMissingTenantFilter(string $sql, string $table, string $operation, QueryExecuted $event): void
             {
                 $this->logCalled = true;
             }
@@ -342,12 +317,12 @@ class TenantQueryListenerTest extends TestCase
         $testListener = new class ($context) extends TenantQueryListener {
             public bool $logCalled = false;
 
-            protected function queryInvolvesTable(string $sql, string $table): bool
+            protected function queryInvolvesTable(string $sql, string $table): ?string
             {
-                return str_contains(strtolower($sql), $table);
+                return str_contains(strtolower($sql), $table) ? 'select' : null;
             }
 
-            protected function logMissingTenantFilter(string $sql, string $table, QueryExecuted $event): void
+            protected function logMissingTenantFilter(string $sql, string $table, string $operation, QueryExecuted $event): void
             {
                 $this->logCalled = true;
             }
@@ -373,12 +348,7 @@ class TenantQueryListenerTest extends TestCase
         $testListener = new class ($context) extends TenantQueryListener {
             public bool $logCalled = false;
 
-            protected function queryInvolvesTable(string $sql, string $table): bool
-            {
-                return str_contains(strtolower($sql), $table);
-            }
-
-            protected function logMissingTenantFilter(string $sql, string $table, QueryExecuted $event): void
+            protected function logMissingTenantFilter(string $sql, string $table, string $operation, QueryExecuted $event): void
             {
                 $this->logCalled = true;
             }
@@ -404,12 +374,7 @@ class TenantQueryListenerTest extends TestCase
         $testListener = new class ($context) extends TenantQueryListener {
             public bool $logCalled = false;
 
-            protected function queryInvolvesTable(string $sql, string $table): bool
-            {
-                return str_contains(strtolower($sql), $table);
-            }
-
-            protected function logMissingTenantFilter(string $sql, string $table, QueryExecuted $event): void
+            protected function logMissingTenantFilter(string $sql, string $table, string $operation, QueryExecuted $event): void
             {
                 $this->logCalled = true;
             }
@@ -436,14 +401,12 @@ class TenantQueryListenerTest extends TestCase
         $testListener = new class ($context) extends TenantQueryListener {
             public bool $logCalled = false;
 
-            protected function queryInvolvesTable(string $sql, string $table): bool
-            {
-                return str_contains(strtolower($sql), $table);
-            }
+            public string $logOperation = '';
 
-            protected function logMissingTenantFilter(string $sql, string $table, QueryExecuted $event): void
+            protected function logMissingTenantFilter(string $sql, string $table, string $operation, QueryExecuted $event): void
             {
                 $this->logCalled = true;
+                $this->logOperation = $operation;
             }
         };
 
@@ -453,6 +416,7 @@ class TenantQueryListenerTest extends TestCase
         $testListener->handle($event);
 
         $this->assertTrue($testListener->logCalled);
+        $this->assertEquals('insert', $testListener->logOperation);
     }
 
     /**
