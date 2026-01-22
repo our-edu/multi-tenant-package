@@ -111,12 +111,13 @@ class TenantQueryListenerTest extends TestCase
 
             public array $logData = [];
 
-            protected function logMissingTenantFilter(string $sql, string $table, QueryExecuted $event): void
+            protected function logMissingTenantFilter(string $sql, string $table, string $operation, QueryExecuted $event): void
             {
                 $this->logCalled = true;
                 $this->logData = [
                     'sql' => $sql,
                     'table' => $table,
+                    'operation' => $operation,
                 ];
             }
         };
@@ -125,6 +126,7 @@ class TenantQueryListenerTest extends TestCase
 
         $this->assertTrue($testListener->logCalled);
         $this->assertEquals('users', $testListener->logData['table']);
+        $this->assertEquals('select', $testListener->logData['operation']);
     }
 
     public function testAcceptsQueryWithTenantFilterInAndClause(): void
@@ -157,7 +159,7 @@ class TenantQueryListenerTest extends TestCase
         $testListener = new class ($context) extends TenantQueryListener {
             public bool $logCalled = false;
 
-            protected function logMissingTenantFilter(string $sql, string $table, QueryExecuted $event): void
+            protected function logMissingTenantFilter(string $sql, string $table, string $operation, QueryExecuted $event): void
             {
                 $this->logCalled = true;
             }
@@ -184,13 +186,7 @@ class TenantQueryListenerTest extends TestCase
         $testListener = new class ($context) extends TenantQueryListener {
             public bool $logCalled = false;
 
-            protected function queryInvolvesTable(string $sql, string $table): bool
-            {
-                // Force match for testing
-                return str_contains(strtolower($sql), 'update ' . $table);
-            }
-
-            protected function logMissingTenantFilter(string $sql, string $table, QueryExecuted $event): void
+            protected function logMissingTenantFilter(string $sql, string $table, string $operation, QueryExecuted $event): void
             {
                 $this->logCalled = true;
             }
@@ -217,13 +213,7 @@ class TenantQueryListenerTest extends TestCase
         $testListener = new class ($context) extends TenantQueryListener {
             public bool $logCalled = false;
 
-            protected function queryInvolvesTable(string $sql, string $table): bool
-            {
-                // Force match for testing
-                return str_contains(strtolower($sql), 'delete from ' . $table);
-            }
-
-            protected function logMissingTenantFilter(string $sql, string $table, QueryExecuted $event): void
+            protected function logMissingTenantFilter(string $sql, string $table, string $operation, QueryExecuted $event): void
             {
                 $this->logCalled = true;
             }
@@ -241,6 +231,7 @@ class TenantQueryListenerTest extends TestCase
         config(['multi-tenant.query_listener.enabled' => true]);
         config(['multi-tenant.tables' => ['users' => 'App\\Models\\User']]);
         config(['multi-tenant.tenant_column' => 'tenant_id']);
+        config(['multi-tenant.query_listener.primary_keys' => ['id', 'uuid']]);
 
         $context = Mockery::mock(TenantContext::class);
         $context->shouldReceive('hasTenant')->andReturn(true);
@@ -248,12 +239,7 @@ class TenantQueryListenerTest extends TestCase
         $testListener = new class ($context) extends TenantQueryListener {
             public bool $logCalled = false;
 
-            protected function queryInvolvesTable(string $sql, string $table): bool
-            {
-                return str_contains(strtolower($sql), 'update ' . $table);
-            }
-
-            protected function logMissingTenantFilter(string $sql, string $table, QueryExecuted $event): void
+            protected function logMissingTenantFilter(string $sql, string $table, string $operation, QueryExecuted $event): void
             {
                 $this->logCalled = true;
             }
@@ -272,6 +258,7 @@ class TenantQueryListenerTest extends TestCase
         config(['multi-tenant.query_listener.enabled' => true]);
         config(['multi-tenant.tables' => ['users' => 'App\\Models\\User']]);
         config(['multi-tenant.tenant_column' => 'tenant_id']);
+        config(['multi-tenant.query_listener.primary_keys' => ['id', 'uuid']]);
 
         $context = Mockery::mock(TenantContext::class);
         $context->shouldReceive('hasTenant')->andReturn(true);
@@ -279,12 +266,7 @@ class TenantQueryListenerTest extends TestCase
         $testListener = new class ($context) extends TenantQueryListener {
             public bool $logCalled = false;
 
-            protected function queryInvolvesTable(string $sql, string $table): bool
-            {
-                return str_contains(strtolower($sql), 'delete from ' . $table);
-            }
-
-            protected function logMissingTenantFilter(string $sql, string $table, QueryExecuted $event): void
+            protected function logMissingTenantFilter(string $sql, string $table, string $operation, QueryExecuted $event): void
             {
                 $this->logCalled = true;
             }
@@ -311,12 +293,7 @@ class TenantQueryListenerTest extends TestCase
         $testListener = new class ($context) extends TenantQueryListener {
             public bool $logCalled = false;
 
-            protected function queryInvolvesTable(string $sql, string $table): bool
-            {
-                return str_contains(strtolower($sql), 'update ' . $table);
-            }
-
-            protected function logMissingTenantFilter(string $sql, string $table, QueryExecuted $event): void
+            protected function logMissingTenantFilter(string $sql, string $table, string $operation, QueryExecuted $event): void
             {
                 $this->logCalled = true;
             }
@@ -342,12 +319,12 @@ class TenantQueryListenerTest extends TestCase
         $testListener = new class ($context) extends TenantQueryListener {
             public bool $logCalled = false;
 
-            protected function queryInvolvesTable(string $sql, string $table): bool
+            protected function queryInvolvesTable(string $sql, string $table): ?string
             {
-                return str_contains(strtolower($sql), $table);
+                return str_contains(strtolower($sql), $table) ? 'select' : null;
             }
 
-            protected function logMissingTenantFilter(string $sql, string $table, QueryExecuted $event): void
+            protected function logMissingTenantFilter(string $sql, string $table, string $operation, QueryExecuted $event): void
             {
                 $this->logCalled = true;
             }
@@ -359,6 +336,89 @@ class TenantQueryListenerTest extends TestCase
         $testListener->handle($event);
 
         $this->assertFalse($testListener->logCalled);
+    }
+
+    public function testInsertWithTenantIdDoesNotLogError(): void
+    {
+        config(['multi-tenant.query_listener.enabled' => true]);
+        config(['multi-tenant.tables' => ['users' => 'App\\Models\\User']]);
+        config(['multi-tenant.tenant_column' => 'tenant_id']);
+
+        $context = Mockery::mock(TenantContext::class);
+        $context->shouldReceive('hasTenant')->andReturn(true);
+
+        $testListener = new class ($context) extends TenantQueryListener {
+            public bool $logCalled = false;
+
+            protected function logMissingTenantFilter(string $sql, string $table, string $operation, QueryExecuted $event): void
+            {
+                $this->logCalled = true;
+            }
+        };
+
+        // INSERT with tenant_id column should NOT log error (MySQL style)
+        $event = $this->createQueryEvent('INSERT INTO users (name, email, tenant_id) VALUES (?, ?, ?)');
+
+        $testListener->handle($event);
+
+        $this->assertFalse($testListener->logCalled);
+    }
+
+    public function testInsertWithQuotedTenantIdDoesNotLogError(): void
+    {
+        config(['multi-tenant.query_listener.enabled' => true]);
+        config(['multi-tenant.tables' => ['activity_log' => 'App\\Models\\ActivityLog']]);
+        config(['multi-tenant.tenant_column' => 'tenant_id']);
+
+        $context = Mockery::mock(TenantContext::class);
+        $context->shouldReceive('hasTenant')->andReturn(true);
+
+        $testListener = new class ($context) extends TenantQueryListener {
+            public bool $logCalled = false;
+
+            protected function logMissingTenantFilter(string $sql, string $table, string $operation, QueryExecuted $event): void
+            {
+                $this->logCalled = true;
+            }
+        };
+
+        // INSERT with quoted tenant_id column should NOT log error (PostgreSQL style)
+        $event = $this->createQueryEvent('insert into "activity_log" ("log_name", "properties", "tenant_id", "created_at") values (?, ?, ?, ?) returning "id"');
+
+        $testListener->handle($event);
+
+        $this->assertFalse($testListener->logCalled);
+    }
+
+    public function testInsertWithoutTenantIdLogsError(): void
+    {
+        config(['multi-tenant.query_listener.enabled' => true]);
+        config(['multi-tenant.tables' => ['users' => 'App\\Models\\User']]);
+        config(['multi-tenant.tenant_column' => 'tenant_id']);
+
+        $context = Mockery::mock(TenantContext::class);
+        $context->shouldReceive('hasTenant')->andReturn(true);
+        $context->shouldReceive('getTenantId')->andReturn(1);
+
+        $testListener = new class ($context) extends TenantQueryListener {
+            public bool $logCalled = false;
+
+            public string $logOperation = '';
+
+            protected function logMissingTenantFilter(string $sql, string $table, string $operation, QueryExecuted $event): void
+            {
+                $this->logCalled = true;
+                $this->logOperation = $operation;
+            }
+        };
+
+        // INSERT without tenant_id column SHOULD log error
+        $event = $this->createQueryEvent('INSERT INTO users (name, email) VALUES (?, ?)');
+
+        $testListener->handle($event);
+
+        $this->assertTrue($testListener->logCalled);
+        $this->assertEquals('insert', $testListener->logOperation);
     }
 
     /**

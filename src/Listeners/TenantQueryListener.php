@@ -52,8 +52,10 @@ class TenantQueryListener
                 continue;
             }
 
-            if ($this->queryInvolvesTable($sql, $table) && ! $this->queryHasTenantFilter($sql)) {
-                $this->logMissingTenantFilter($sql, $table, $event);
+            $operation = $this->queryInvolvesTable($sql, $table);
+
+            if ($operation !== null && ! $this->queryHasTenantFilter($sql, $operation)) {
+                $this->logMissingTenantFilter($sql, $table, $operation, $event);
 
                 break;
             }
@@ -107,15 +109,143 @@ class TenantQueryListener
 
     /**
      * Check if the query involves a specific table.
+     *
+     * @return string|null Returns the operation type (select, insert, update, delete) or null if not involved
      */
-    protected function queryInvolvesTable(string $sql, string $table): bool
+    protected function queryInvolvesTable(string $sql, string $table): ?string
     {
+        $quotedTable = preg_quote($table, '/');
+
+        // INSERT: INSERT INTO table
+        if (preg_match('/\binsert\s+into\s+[`"\']?' . $quotedTable . '[`"\']?(?:\s|\()/i', $sql)) {
+            return 'insert';
+        }
+
+        // UPDATE: UPDATE table
+        if (preg_match('/\bupdate\s+[`"\']?' . $quotedTable . '[`"\']?(?:\s|$)/i', $sql)) {
+            return 'update';
+        }
+
+        // DELETE: DELETE FROM table (must check before SELECT because DELETE FROM contains FROM)
+        if (preg_match('/\bdelete\s+from\s+[`"\']?' . $quotedTable . '[`"\']?(?:\s|$)/i', $sql)) {
+            return 'delete';
+        }
+
+        // SELECT: FROM table, JOIN table
+        $selectPatterns = [
+            '/\bfrom\s+[`"\']?' . $quotedTable . '[`"\']?(?:\s|$|,)/i',
+            '/\bjoin\s+[`"\']?' . $quotedTable . '[`"\']?(?:\s|$)/i',
+        ];
+
+        foreach ($selectPatterns as $pattern) {
+            if (preg_match($pattern, $sql)) {
+                return 'select';
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Check if the query has a tenant_id filter based on the operation type.
+     *
+     * @param string $sql The SQL query
+     * @param string $operation The operation type (select, insert, update, delete)
+     * @return bool True if the query properly includes tenant_id
+     */
+    protected function queryHasTenantFilter(string $sql, string $operation): bool
+    {
+        $tenantColumn = $this->getTenantColumn();
+
+        return match ($operation) {
+            'select' => $this->selectHasTenantFilter($sql, $tenantColumn),
+            'insert' => $this->insertHasTenantColumn($sql, $tenantColumn),
+            'update' => $this->updateHasTenantFilter($sql, $tenantColumn),
+            'delete' => $this->deleteHasTenantFilter($sql, $tenantColumn),
+            default => false,
+        };
+    }
+
+    /**
+     * Check if SELECT query has tenant_id in WHERE clause.
+     */
+    protected function selectHasTenantFilter(string $sql, string $tenantColumn): bool
+    {
+        return $this->hasWhereWithTenantColumn($sql, $tenantColumn);
+    }
+
+    /**
+     * Check if INSERT query includes tenant_id column.
+     */
+    protected function insertHasTenantColumn(string $sql, string $tenantColumn): bool
+    {
+        // Check if tenant column is in the column list
+        // Pattern matches both: tenant_id (MySQL) and "tenant_id" (PostgreSQL)
+        // Examples:
+        //   insert into table (col1, tenant_id, col2) values ...
+        //   insert into "table" ("col1", "tenant_id", "col2") values ...
+        $quotedTenantColumn = preg_quote($tenantColumn, '/');
+
+        // Match tenant column in the column list (before VALUES)
+        $pattern = '/\binsert\s+into\s+[`"\']?\w+[`"\']?\s*\([^)]*[`"\']?' . $quotedTenantColumn . '[`"\']?[^)]*\)/i';
+
+        return (bool) preg_match($pattern, $sql);
+    }
+
+    /**
+     * Check if UPDATE query has tenant_id in WHERE clause or is by primary key.
+     */
+    protected function updateHasTenantFilter(string $sql, string $tenantColumn): bool
+    {
+        // First check if WHERE clause contains tenant_id
+        if ($this->hasWhereWithTenantColumn($sql, $tenantColumn)) {
+            return true;
+        }
+
+        // UPDATE by primary key is safe (model was loaded with tenant scope)
+        if ($this->isOperationByPrimaryKey($sql, 'update')) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if DELETE query has tenant_id in WHERE clause or is by primary key.
+     */
+    protected function deleteHasTenantFilter(string $sql, string $tenantColumn): bool
+    {
+        // First check if WHERE clause contains tenant_id
+        if ($this->hasWhereWithTenantColumn($sql, $tenantColumn)) {
+            return true;
+        }
+
+        // DELETE by primary key is safe (model was loaded with tenant scope)
+        if ($this->isOperationByPrimaryKey($sql, 'delete')) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if the SQL has tenant column in WHERE clause.
+     */
+    protected function hasWhereWithTenantColumn(string $sql, string $tenantColumn): bool
+    {
+        $quotedColumn = preg_quote($tenantColumn, '/');
+
+        // Patterns for tenant_id in WHERE clause
+        // Handles: WHERE tenant_id = ?, WHERE "tenant_id" = ?, AND tenant_id = ?, etc.
         $patterns = [
-            '/\bfrom\s+[`"\']?' . preg_quote($table, '/') . '[`"\']?\b/i',
-            '/\bjoin\s+[`"\']?' . preg_quote($table, '/') . '[`"\']?\b/i',
-            '/\binto\s+[`"\']?' . preg_quote($table, '/') . '[`"\']?\b/i',
-            '/\bupdate\s+[`"\']?' . preg_quote($table, '/') . '[`"\']?\b/i',
-            '/\bdelete\s+from\s+[`"\']?' . preg_quote($table, '/') . '[`"\']?\b/i',
+            // WHERE tenant_id = ? or WHERE "tenant_id" = ?
+            '/\bwhere\s+[`"\']?' . $quotedColumn . '[`"\']?\s*=\s*\?/i',
+            // WHERE ... AND tenant_id = ?
+            '/\bwhere\b.*\band\s+[`"\']?' . $quotedColumn . '[`"\']?\s*=\s*\?/i',
+            // WHERE ... tenant_id = ? (anywhere in WHERE)
+            '/\bwhere\b[^;]*[`"\']?' . $quotedColumn . '[`"\']?\s*=\s*\?/i',
+            // Subquery or complex: just check if tenant_id = ? exists after WHERE
+            '/\bwhere\b.*[`"\']?' . $quotedColumn . '[`"\']?\s*(=|in\s*\()/i',
         ];
 
         foreach ($patterns as $pattern) {
@@ -128,58 +258,23 @@ class TenantQueryListener
     }
 
     /**
-     * Check if the query has a tenant_id filter or is a safe primary key operation.
-     *
-     * UPDATE/DELETE queries by primary key (id) are considered safe because
-     * the model was already loaded with tenant scope applied.
+     * Check if the operation is by primary key (safe because model was loaded with tenant scope).
      */
-    protected function queryHasTenantFilter(string $sql): bool
+    protected function isOperationByPrimaryKey(string $sql, string $operation): bool
     {
-        $tenantColumn = $this->getTenantColumn();
-
-        // Check for tenant_id in WHERE clause
-        $tenantPatterns = [
-            '/\bwhere\b.*\b' . preg_quote($tenantColumn, '/') . '\b/i',
-            '/\band\b.*\b' . preg_quote($tenantColumn, '/') . '\b/i',
-            '/\b' . preg_quote($tenantColumn, '/') . '\s*=/i',
-        ];
-
-        foreach ($tenantPatterns as $pattern) {
-            if (preg_match($pattern, $sql)) {
-                return true;
-            }
-        }
-
-        // Check if this is an UPDATE/DELETE by primary key (id)
-        // These are safe because the model was loaded with tenant scope
-        if ($this->isUpdateOrDeleteByPrimaryKey($sql)) {
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * Check if the query is an UPDATE or DELETE by primary key.
-     *
-     * When Eloquent updates/deletes a model, it uses WHERE id = ? or WHERE uuid = ?
-     * The model was already loaded with tenant scope, so this is safe.
-     */
-    protected function isUpdateOrDeleteByPrimaryKey(string $sql): bool
-    {
-        // Common primary key column names
         $primaryKeys = $this->getPrimaryKeyColumns();
 
         foreach ($primaryKeys as $pk) {
-            $patterns = [
-                '/\bupdate\b.+\bwhere\b\s+[`"\']?' . preg_quote($pk, '/') . '[`"\']?\s*=\s*\?/i',
-                '/\bdelete\b.+\bwhere\b\s+[`"\']?' . preg_quote($pk, '/') . '[`"\']?\s*=\s*\?/i',
-            ];
+            $quotedPk = preg_quote($pk, '/');
 
-            foreach ($patterns as $pattern) {
-                if (preg_match($pattern, $sql)) {
-                    return true;
-                }
+            $pattern = match ($operation) {
+                'update' => '/\bupdate\b.+?\bwhere\s+[`"\']?' . $quotedPk . '[`"\']?\s*=\s*\?/i',
+                'delete' => '/\bdelete\b.+?\bwhere\s+[`"\']?' . $quotedPk . '[`"\']?\s*=\s*\?/i',
+                default => null,
+            };
+
+            if ($pattern && preg_match($pattern, $sql)) {
+                return true;
             }
         }
 
@@ -199,15 +294,24 @@ class TenantQueryListener
     /**
      * Log the missing tenant filter error.
      */
-    protected function logMissingTenantFilter(string $sql, string $table, QueryExecuted $event): void
+    protected function logMissingTenantFilter(string $sql, string $table, string $operation, QueryExecuted $event): void
     {
         $channel = config('multi-tenant.query_listener.log_channel');
         $logger = $channel ? Log::channel($channel) : Log::getFacadeRoot();
 
         $source = $this->getQuerySource();
 
-        $logger->error('Query executed without tenant_id filter', [
+        $message = match ($operation) {
+            'select' => 'SELECT query executed without tenant_id in WHERE clause',
+            'insert' => 'INSERT query executed without tenant_id column',
+            'update' => 'UPDATE query executed without tenant_id filter',
+            'delete' => 'DELETE query executed without tenant_id filter',
+            default => 'Query executed without tenant_id filter',
+        };
+
+        $logger->error($message, [
             'table' => $table,
+            'operation' => strtoupper($operation),
             'sql' => $sql,
             'bindings' => $event->bindings,
             'time' => $event->time,
