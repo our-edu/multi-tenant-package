@@ -116,18 +116,6 @@ class TenantQueryListener
     {
         $quotedTable = preg_quote($table, '/');
 
-        // SELECT: FROM table, JOIN table
-        $selectPatterns = [
-            '/\bfrom\s+[`"\']?' . $quotedTable . '[`"\']?(?:\s|$|,)/i',
-            '/\bjoin\s+[`"\']?' . $quotedTable . '[`"\']?(?:\s|$)/i',
-        ];
-
-        foreach ($selectPatterns as $pattern) {
-            if (preg_match($pattern, $sql)) {
-                return 'select';
-            }
-        }
-
         // INSERT: INSERT INTO table
         if (preg_match('/\binsert\s+into\s+[`"\']?' . $quotedTable . '[`"\']?(?:\s|\()/i', $sql)) {
             return 'insert';
@@ -138,9 +126,21 @@ class TenantQueryListener
             return 'update';
         }
 
-        // DELETE: DELETE FROM table
+        // DELETE: DELETE FROM table (must check before SELECT because DELETE FROM contains FROM)
         if (preg_match('/\bdelete\s+from\s+[`"\']?' . $quotedTable . '[`"\']?(?:\s|$)/i', $sql)) {
             return 'delete';
+        }
+
+        // SELECT: FROM table, JOIN table
+        $selectPatterns = [
+            '/\bfrom\s+[`"\']?' . $quotedTable . '[`"\']?(?:\s|$|,)/i',
+            '/\bjoin\s+[`"\']?' . $quotedTable . '[`"\']?(?:\s|$)/i',
+        ];
+
+        foreach ($selectPatterns as $pattern) {
+            if (preg_match($pattern, $sql)) {
+                return 'select';
+            }
         }
 
         return null;
@@ -268,8 +268,8 @@ class TenantQueryListener
             $quotedPk = preg_quote($pk, '/');
 
             $pattern = match ($operation) {
-                'update' => '/\bupdate\b.+\bwhere\s+[`"\']?' . $quotedPk . '[`"\']?\s*=\s*\?/i',
-                'delete' => '/\bdelete\b.+\bwhere\s+[`"\']?' . $quotedPk . '[`"\']?\s*=\s*\?/i',
+                'update' => '/\bupdate\b.+?\bwhere\s+[`"\']?' . $quotedPk . '[`"\']?\s*=\s*\?/i',
+                'delete' => '/\bdelete\b.+?\bwhere\s+[`"\']?' . $quotedPk . '[`"\']?\s*=\s*\?/i',
                 default => null,
             };
 

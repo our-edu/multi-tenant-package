@@ -231,6 +231,7 @@ class TenantQueryListenerTest extends TestCase
         config(['multi-tenant.query_listener.enabled' => true]);
         config(['multi-tenant.tables' => ['users' => 'App\\Models\\User']]);
         config(['multi-tenant.tenant_column' => 'tenant_id']);
+        config(['multi-tenant.query_listener.primary_keys' => ['id', 'uuid']]);
 
         $context = Mockery::mock(TenantContext::class);
         $context->shouldReceive('hasTenant')->andReturn(true);
@@ -257,6 +258,7 @@ class TenantQueryListenerTest extends TestCase
         config(['multi-tenant.query_listener.enabled' => true]);
         config(['multi-tenant.tables' => ['users' => 'App\\Models\\User']]);
         config(['multi-tenant.tenant_column' => 'tenant_id']);
+        config(['multi-tenant.query_listener.primary_keys' => ['id', 'uuid']]);
 
         $context = Mockery::mock(TenantContext::class);
         $context->shouldReceive('hasTenant')->andReturn(true);
