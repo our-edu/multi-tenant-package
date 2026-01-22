@@ -28,6 +28,12 @@ class TenantContext
 
     private bool $resolved = false;
 
+    /**
+     * Flag to prevent infinite loop during resolution.
+     * When true, we're in the middle of resolving and should not trigger another resolve.
+     */
+    private bool $resolving = false;
+
     public function __construct(
         private readonly TenantResolver $resolver
     ) {
@@ -38,6 +44,12 @@ class TenantContext
      */
     public function getTenantId(): ?int
     {
+        // Prevent infinite loop: if we're currently resolving, return null
+        // This happens when the resolver queries a model with HasTenant trait
+        if ($this->resolving) {
+            return null;
+        }
+
         if (! $this->resolved) {
             $this->resolve();
         }
@@ -52,6 +64,7 @@ class TenantContext
     {
         $this->tenantId = $tenantId;
         $this->resolved = true;
+        $this->resolving = false;
     }
 
     /**
@@ -61,6 +74,7 @@ class TenantContext
     {
         $this->tenantId = null;
         $this->resolved = false;
+        $this->resolving = false;
     }
 
     /**
@@ -68,6 +82,11 @@ class TenantContext
      */
     public function hasTenant(): bool
     {
+        // If we're in the middle of resolving, tenant is not yet available
+        if ($this->resolving) {
+            return false;
+        }
+
         return $this->getTenantId() !== null;
     }
 
@@ -96,10 +115,19 @@ class TenantContext
 
     /**
      * Perform lazy resolution using the configured TenantResolver.
+     *
+     * Sets the resolving flag to prevent infinite loop when the resolver
+     * queries a model that has the HasTenant trait (e.g., Session model).
      */
     private function resolve(): void
     {
-        $this->resolved = true;
-        $this->tenantId = $this->resolver->resolveTenantId();
+        $this->resolving = true;
+
+        try {
+            $this->tenantId = $this->resolver->resolveTenantId();
+            $this->resolved = true;
+        } finally {
+            $this->resolving = false;
+        }
     }
 }

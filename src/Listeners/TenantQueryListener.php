@@ -137,6 +137,11 @@ class TenantQueryListener
     {
         $tenantColumn = $this->getTenantColumn();
 
+        // INSERT statements with tenant_id column are safe - they include the tenant_id value
+        if ($this->isInsertWithTenantColumn($sql, $tenantColumn)) {
+            return true;
+        }
+
         // Check for tenant_id in WHERE clause
         $tenantPatterns = [
             '/\bwhere\b.*\b' . preg_quote($tenantColumn, '/') . '\b/i',
@@ -157,6 +162,30 @@ class TenantQueryListener
         }
 
         return false;
+    }
+
+    /**
+     * Check if the query is an INSERT statement that includes the tenant column.
+     *
+     * INSERT statements don't have WHERE clauses - they pass tenant_id as a column value.
+     * If the INSERT includes the tenant column, it's considered safe.
+     */
+    protected function isInsertWithTenantColumn(string $sql, string $tenantColumn): bool
+    {
+        // Check if it's an INSERT statement
+        if (! preg_match('/^\s*insert\s+into\s+/i', $sql)) {
+            return false;
+        }
+
+        // Check if tenant column is in the column list
+        // Pattern matches both: tenant_id (MySQL) and "tenant_id" (PostgreSQL)
+        // Examples:
+        //   insert into table (col1, tenant_id, col2) values ...
+        //   insert into "table" ("col1", "tenant_id", "col2") values ...
+        $quotedTenantColumn = preg_quote($tenantColumn, '/');
+        $pattern = '/\binsert\s+into\s+[`"\']?\w+[`"\']?\s*\([^)]*[`"\']?' . $quotedTenantColumn . '[`"\']?[^)]*\)/i';
+
+        return (bool) preg_match($pattern, $sql);
     }
 
     /**
