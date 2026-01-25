@@ -18,12 +18,12 @@ use Throwable;
  * DomainTenantResolver
  *
  * Resolves the current tenant ID from the request domain.
- * Queries the tenant table by domain column and returns the tenant ID.
+ * Queries the tenant table by checking if domain exists in the clients JSON column.
  *
  * Resolution flow:
  * 1. If running in console (and not unit tests) → skip
  * 2. Get the domain from the current request
- * 3. Query tenant table by domain column
+ * 3. Query tenant table by searching domain in clients JSON column
  * 4. Return the tenant ID (primary key) as integer
  */
 class DomainTenantResolver implements TenantResolver
@@ -55,6 +55,9 @@ class DomainTenantResolver implements TenantResolver
 
     /**
      * Query tenant table by domain and return the tenant ID.
+     *
+     * The clients column is a JSON array of objects with structure:
+     * [{"domain": "example.com", "is_active": true}, ...]
      */
     protected function resolveTenantIdByDomain(string $domain): ?int
     {
@@ -64,14 +67,29 @@ class DomainTenantResolver implements TenantResolver
             return null;
         }
 
-        $domainColumn = $this->getDomainColumn();
+        $clientsColumn = $this->getClientsColumn();
 
         try {
-            $tenantId = $tenantModel::query()
-                ->where($domainColumn, $domain)
-                ->value('id');
+            $tenant = $tenantModel::query()
+                ->where('is_active', true)
+                ->whereNotNull($clientsColumn)
+                ->get()
+                ->first(function ($tenant) use ($domain, $clientsColumn) {
+                    $clients = $tenant->{$clientsColumn} ?? [];
+                    foreach ($clients as $client) {
+                        if (
+                            isset($client['domain']) &&
+                            $client['domain'] === $domain &&
+                            ($client['is_active'] ?? true)
+                        ) {
+                            return true;
+                        }
+                    }
 
-            return $tenantId !== null ? (int) $tenantId : null;
+                    return false;
+                });
+
+            return $tenant?->id !== null ? (int) $tenant->id : null;
         } catch (Throwable) {
             return null;
         }
@@ -104,10 +122,10 @@ class DomainTenantResolver implements TenantResolver
     }
 
     /**
-     * Get the domain column name on the tenant model.
+     * Get the clients column name on the tenant model (JSON column with multiple domains).
      */
-    protected function getDomainColumn(): string
+    protected function getClientsColumn(): string
     {
-        return (string) config('multi-tenant.domain.column', 'domain');
+        return (string) config('multi-tenant.clients.column', 'clients');
     }
 }

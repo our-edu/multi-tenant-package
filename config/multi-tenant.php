@@ -75,7 +75,7 @@ return [
     | Resolves tenant from request domain.
     |
     */
-    'domain' => [
+    'clients' => [
         /*
         |--------------------------------------------------------------------------
         | Domain Column
@@ -84,7 +84,7 @@ return [
         | The column name on the tenant model that stores the domain value.
         |
         */
-        'column' => env('MULTI_TENANT_DOMAIN_COLUMN', 'domain'),
+        'column' => env('MULTI_TENANT_CLIENTS_COLUMN', 'clients'),
     ],
 
     /*

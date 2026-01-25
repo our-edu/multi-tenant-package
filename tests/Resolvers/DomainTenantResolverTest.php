@@ -24,30 +24,30 @@ class DomainTenantResolverTest extends TestCase
         $this->assertNull($tenantId);
     }
 
-    public function testGetDomainColumnDefaultsToDomain(): void
+    public function testGetClientsColumnDefaultsToClients(): void
     {
         $resolver = new class () extends DomainTenantResolver {
-            public function exposedGetDomainColumn(): string
+            public function exposedGetClientsColumn(): string
             {
-                return $this->getDomainColumn();
+                return $this->getClientsColumn();
             }
         };
 
-        $this->assertEquals('domain', $resolver->exposedGetDomainColumn());
+        $this->assertEquals('clients', $resolver->exposedGetClientsColumn());
     }
 
-    public function testGetDomainColumnUsesConfig(): void
+    public function testGetClientsColumnUsesConfig(): void
     {
-        config(['multi-tenant.domain.column' => 'custom_domain']);
+        config(['multi-tenant.clients.column' => 'custom_clients']);
 
         $resolver = new class () extends DomainTenantResolver {
-            public function exposedGetDomainColumn(): string
+            public function exposedGetClientsColumn(): string
             {
-                return $this->getDomainColumn();
+                return $this->getClientsColumn();
             }
         };
 
-        $this->assertEquals('custom_domain', $resolver->exposedGetDomainColumn());
+        $this->assertEquals('custom_clients', $resolver->exposedGetClientsColumn());
     }
 
     public function testGetTenantModelUsesConfig(): void
