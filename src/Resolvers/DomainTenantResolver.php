@@ -85,6 +85,7 @@ class DomainTenantResolver implements TenantResolver
                             return true;
                         }
                     }
+
                     return false;
                 });
 
