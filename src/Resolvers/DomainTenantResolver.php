@@ -125,6 +125,6 @@ class DomainTenantResolver implements TenantResolver
      */
     protected function getClientsColumn(): string
     {
-        return (string) config('multi-tenant.domain.column', 'clients');
+        return (string) config('multi-tenant.domain.column', 'domain');
     }
 }
