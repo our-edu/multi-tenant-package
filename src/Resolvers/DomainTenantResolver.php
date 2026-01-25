@@ -67,7 +67,7 @@ class DomainTenantResolver implements TenantResolver
             return null;
         }
 
-        $clientsColumn = $this->getDomainColumn();
+        $clientsColumn = $this->getClientsColumn();
 
         try {
             $tenant = $tenantModel::query()
@@ -124,8 +124,8 @@ class DomainTenantResolver implements TenantResolver
     /**
      * Get the clients column name on the tenant model (JSON column with multiple domains).
      */
-    protected function getDomainColumn(): string
+    protected function getClientsColumn(): string
     {
-        return (string) config('multi-tenant.domain.column', 'domain');
+        return (string) config('multi-tenant.clients.column', 'clients');
     }
 }
