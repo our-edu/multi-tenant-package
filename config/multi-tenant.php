@@ -109,6 +109,30 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Listener Tenant Resolution
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for resolving tenant in event/message listeners.
+    | Used when listeners need to set tenant context from message payload.
+    |
+    */
+    'listener' => [
+        /*
+        |--------------------------------------------------------------------------
+        | Fallback to Database
+        |--------------------------------------------------------------------------
+        |
+        | When tenant_id is not found in the message payload, this option
+        | determines whether to fallback to querying the database for an
+        | active tenant (where is_active = true). If false, an exception
+        | will be thrown.
+        |
+        */
+        'fallback_to_database' => env('MULTI_TENANT_LISTENER_FALLBACK_DB', false),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Query Listener
     |--------------------------------------------------------------------------
     |
