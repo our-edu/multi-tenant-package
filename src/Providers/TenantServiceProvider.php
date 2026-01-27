@@ -138,7 +138,7 @@ class TenantServiceProvider extends ServiceProvider
 
         // Create the vendor directory if it doesn't exist
         if (! is_dir($publishPath)) {
-            @mkdir($publishPath, 0755, true);
+            @mkdir($publishPath, 0o755, true);
         }
 
         // Copy each language directory
@@ -152,7 +152,7 @@ class TenantServiceProvider extends ServiceProvider
 
             if (is_dir($sourceLangPath)) {
                 if (! is_dir($targetLangPath)) {
-                    @mkdir($targetLangPath, 0755, true);
+                    @mkdir($targetLangPath, 0o755, true);
                 }
 
                 // Copy each file in the language directory

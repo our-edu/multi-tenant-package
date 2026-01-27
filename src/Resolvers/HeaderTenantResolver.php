@@ -12,6 +12,7 @@ namespace Ouredu\MultiTenant\Resolvers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 use Ouredu\MultiTenant\Contracts\TenantResolver;
+use Throwable;
 
 /**
  * HeaderTenantResolver
@@ -59,7 +60,7 @@ class HeaderTenantResolver implements TenantResolver
     {
         try {
             return App::make('request');
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return null;
         }
     }
@@ -171,4 +172,3 @@ class HeaderTenantResolver implements TenantResolver
         return config('multi-tenant.header.routes', []);
     }
 }
-

@@ -31,7 +31,7 @@ class TenantNotResolvedException extends RuntimeException
 
     public function __construct(?string $message = null)
     {
-        $message = $message ?? $this->getTranslatedMessage();
+        $message ??= $this->getTranslatedMessage();
 
         parent::__construct($message);
     }
@@ -55,4 +55,3 @@ class TenantNotResolvedException extends RuntimeException
         return $translated;
     }
 }
-
