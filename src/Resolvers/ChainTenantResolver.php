@@ -18,8 +18,9 @@ use Ouredu\MultiTenant\Contracts\TenantResolver;
  * until a tenant ID is resolved.
  *
  * Default order:
- * 1. UserSessionTenantResolver - Uses getSession() helper
- * 2. DomainTenantResolver - Uses request domain/subdomain
+ * 1. HeaderTenantResolver - Uses request header for specific routes
+ * 2. UserSessionTenantResolver - Uses getSession() helper
+ * 3. DomainTenantResolver - Uses request domain/subdomain
  */
 class ChainTenantResolver implements TenantResolver
 {
@@ -60,6 +61,7 @@ class ChainTenantResolver implements TenantResolver
     protected function getDefaultResolvers(): array
     {
         return [
+            new HeaderTenantResolver(),
             new UserSessionTenantResolver(),
             new DomainTenantResolver(),
         ];
