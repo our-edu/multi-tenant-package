@@ -12,18 +12,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **BREAKING:** `TenantContext` now stores `tenant_id` as `int` instead of tenant Model
 - **BREAKING:** Removed `getTenant()`, `setTenant()`, `setTenantById()` methods from TenantContext
 - **BREAKING:** Removed `runWithTenant()` and `runWithTenantId()` - use `runForTenant(int $tenantId, callable)` instead
+- **BREAKING:** `TenantMiddleware` now throws `TenantNotResolvedException` when no tenant is resolved
 
 ### Added
+- `HeaderTenantResolver` - Gets tenant_id from request header for specific routes
 - `UserSessionTenantResolver` - Gets tenant_id from configurable session helper function
 - `DomainTenantResolver` - Gets tenant_id by querying tenant table by domain
 - `ChainTenantResolver` - Chains multiple resolvers together (default)
+- `TenantNotResolvedException` - Thrown when no resolver returns a valid tenant ID
 - `TenantQueryListener` - Logs errors when queries run without tenant_id filter
+- Excluded routes support in `TenantMiddleware` - bypass tenant resolution for configured routes
+- Translatable exception messages via Laravel's translation system
 - `setTenantId(?int $tenantId)` method on TenantContext
 - `runForTenant(int $tenantId, callable $callback)` method on TenantContext
 - Configurable session helper function name via config
 - `tenant:migrate` command to add tenant_id column to configured tables
 - `tables` config option to define tables that need tenant_id column
 - `query_listener` config option to enable/disable and set log channel
+- `header` config option for HeaderTenantResolver configuration
+- `excluded_routes` config option for middleware route exclusion
+- Language files for exception messages (`lang/en/exceptions.php`)
 
 
 ## [1.0.0] - 2026-01-12

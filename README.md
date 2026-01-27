@@ -12,9 +12,10 @@ A Laravel package for building multi-tenant applications. This package provides 
 - **Tenant Context** - Centralized tenant state management across requests, jobs, and commands
 - **Automatic Query Scoping** - All queries automatically filtered by tenant
 - **Model Trait** - Simple `HasTenant` trait for tenant-aware models
-- **Built-in Resolvers** - Session and Domain resolvers included
+- **Built-in Resolvers** - Session, Domain, and Header resolvers included
 - **Flexible Resolution** - Implement your own tenant resolution strategy
-- **Middleware Support** - HTTP middleware for tenant resolution
+- **Middleware Support** - HTTP middleware for tenant resolution with excluded routes
+- **Exception Handling** - Throws exception when tenant cannot be resolved (translatable messages)
 - **Auto-assignment** - Automatically sets tenant ID on model creation/update
 - **Zero Configuration** - Works out of the box with sensible defaults
 - **Customizable** - Override tenant column names per model
@@ -42,8 +43,9 @@ The package will auto-register its service provider and automatically publish th
 ### 1. Configure (Optional)
 
 The package uses `ChainTenantResolver` by default, which tries resolvers in order:
-1. `UserSessionTenantResolver` - Gets `tenant_id` from `getSession()` helper
-2. `DomainTenantResolver` - Gets `tenant_id` by querying tenant table by domain
+1. `HeaderTenantResolver` - Gets `tenant_id` from request header for specific routes
+2. `UserSessionTenantResolver` - Gets `tenant_id` from `getSession()` helper
+3. `DomainTenantResolver` - Gets `tenant_id` by querying tenant table by domain
 
 Configure the session helper in `config/multi-tenant.php`:
 ```php
@@ -111,6 +113,22 @@ return [
     'session' => [
         'helper' => 'getSession',     // Helper function name
         'tenant_column' => 'tenant_id',
+    ],
+    
+    // Header configuration (for HeaderTenantResolver)
+    'header' => [
+        'name' => 'X-Tenant-ID',      // Header name containing tenant ID
+        'routes' => [                  // Routes where header resolution is allowed
+            // 'api.external.*',
+            // 'api/v1/external/*',
+        ],
+    ],
+    
+    // Excluded routes (bypass tenant resolution in middleware)
+    'excluded_routes' => [
+        // 'health',
+        // 'login',
+        // 'password/*',
     ],
     
     // Domain configuration (for DomainTenantResolver)
@@ -260,6 +278,58 @@ Route::middleware('tenant')->group(function () {
 });
 ```
 
+#### Excluded Routes
+
+Configure routes that should bypass tenant resolution:
+
+```php
+// config/multi-tenant.php
+'excluded_routes' => [
+    'health',           // Exact match
+    'api/health',       // Exact path
+    'password/*',       // Wildcard pattern
+    'auth.*',           // Route name pattern
+],
+```
+
+#### Exception Handling
+
+When no resolver can determine the tenant ID, a `TenantNotResolvedException` is thrown. This ensures all non-excluded routes have a valid tenant context.
+
+```php
+use Ouredu\MultiTenant\Exceptions\TenantNotResolvedException;
+
+// Handle in your exception handler
+public function render($request, Throwable $e)
+{
+    if ($e instanceof TenantNotResolvedException) {
+        return response()->json(['error' => 'Tenant not found'], 404);
+    }
+    
+    return parent::render($request, $e);
+}
+```
+
+### Header Tenant Resolver
+
+For API routes where the tenant ID is passed as a header (e.g., external integrations, webhooks):
+
+```php
+// config/multi-tenant.php
+'header' => [
+    'name' => 'X-Tenant-ID',      // Header name
+    'routes' => [
+        'api.external.*',          // Route name pattern
+        'api/v1/webhook/*',        // URI pattern
+    ],
+],
+```
+
+Then send requests with the header:
+```bash
+curl -H "X-Tenant-ID: 123" https://api.example.com/api/v1/webhook/process
+```
+
 ### Queued Jobs
 
 For jobs that need tenant context, set the tenant ID in the job:
@@ -329,6 +399,43 @@ class GenerateReports extends Command
 | `tenant(): BelongsTo` | Relationship to tenant model |
 | `scopeForTenant($query, int $id): Builder` | Scope to specific tenant |
 | `getTenantColumn(): string` | Get tenant column name (override) |
+
+## Translations
+
+The package supports translatable exception messages. Language files are **automatically published** when the package is installed.
+
+**Supported languages:** English (en), Arabic (ar)
+
+To manually re-publish or update the language files:
+
+```bash
+php artisan vendor:publish --tag=multi-tenant-lang --force
+```
+
+Published files location: `lang/vendor/multi-tenant/`
+
+```php
+// lang/vendor/multi-tenant/en/exceptions.php
+return [
+    'tenant_not_resolved' => 'Unable to resolve tenant. No resolver returned a valid tenant ID.',
+];
+
+// lang/vendor/multi-tenant/ar/exceptions.php
+return [
+    'tenant_not_resolved' => 'غير قادر على تحديد المستأجر. لم يُرجع أي محلل معرف مستأجر صالح.',
+];
+```
+
+### Adding More Languages
+
+Create additional language files in `lang/vendor/multi-tenant/{locale}/exceptions.php`:
+
+```php
+// lang/vendor/multi-tenant/fr/exceptions.php
+return [
+    'tenant_not_resolved' => 'Impossible de résoudre le locataire. Aucun résolveur n\'a retourné un ID de locataire valide.',
+];
+```
 
 ## Testing
 
