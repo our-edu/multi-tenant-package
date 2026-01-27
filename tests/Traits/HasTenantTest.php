@@ -299,7 +299,6 @@ class HasTenantTest extends TestCase
     }
 }
 
-
 /**
  * Test model with HasTenant trait
  */
@@ -364,4 +363,3 @@ class TestModelWithoutScope extends Model
 
     public bool $withoutTenantScope = true;
 }
-

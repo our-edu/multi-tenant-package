@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace Tests\Exceptions;
 
 use Ouredu\MultiTenant\Exceptions\TenantNotResolvedException;
+use RuntimeException;
 use Tests\TestCase;
 
 class TenantNotResolvedExceptionTest extends TestCase
@@ -35,7 +36,7 @@ class TenantNotResolvedExceptionTest extends TestCase
     {
         $exception = new TenantNotResolvedException();
 
-        $this->assertInstanceOf(\RuntimeException::class, $exception);
+        $this->assertInstanceOf(RuntimeException::class, $exception);
     }
 
     public function testExceptionUsesTranslatedMessage(): void

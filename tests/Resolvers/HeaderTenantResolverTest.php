@@ -10,7 +10,6 @@ declare(strict_types=1);
 namespace Tests\Resolvers;
 
 use Illuminate\Http\Request;
-use Illuminate\Routing\Route;
 use Ouredu\MultiTenant\Resolvers\HeaderTenantResolver;
 use Tests\TestCase;
 
@@ -181,4 +180,3 @@ class HeaderTenantResolverTest extends TestCase
         $this->assertFalse($resolver->exposedIsPathAllowed('api/internal/users', $routes));
     }
 }
-
