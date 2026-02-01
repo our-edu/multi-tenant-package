@@ -68,6 +68,72 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Header Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for HeaderTenantResolver.
+    | Resolves tenant from a request header for specific routes.
+    |
+    */
+    'header' => [
+        /*
+        |--------------------------------------------------------------------------
+        | Header Name
+        |--------------------------------------------------------------------------
+        |
+        | The name of the HTTP header that contains the tenant ID.
+        | The header value should be a numeric tenant ID.
+        |
+        */
+        'name' => env('MULTI_TENANT_HEADER_NAME', 'X-Tenant-ID'),
+
+        /*
+        |--------------------------------------------------------------------------
+        | Allowed Routes
+        |--------------------------------------------------------------------------
+        |
+        | List of route names or URI patterns where header-based tenant resolution
+        | is allowed. Supports wildcards (*).
+        |
+        | Examples:
+        | - 'api.external.*' - matches all routes starting with api.external.
+        | - 'api/v1/external/*' - matches all URIs starting with api/v1/external/
+        | - 'webhook.process' - matches exact route name
+        |
+        */
+        'routes' => [
+            // 'api.external.*',
+            // 'api/v1/external/*',
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Excluded Routes
+    |--------------------------------------------------------------------------
+    |
+    | Routes listed here will bypass tenant resolution entirely in the
+    | TenantMiddleware. Useful for public routes like health checks,
+    | login pages, or webhooks that handle tenant resolution differently.
+    |
+    | Supports wildcards (*) for pattern matching.
+    |
+    | Examples:
+    | - 'health' - matches exact route
+    | - 'api/health' - matches exact path
+    | - 'password/*' - matches password/reset, password/forgot, etc.
+    |
+    */
+    'excluded_routes' => [
+        // 'health',
+        // 'api/health',
+        // 'login',
+        // 'register',
+        // 'password/*',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Domain Configuration
     |--------------------------------------------------------------------------
     |

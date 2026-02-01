@@ -60,6 +60,9 @@ This package implements a **Shared Database, Shared Schema** pattern with **Row-
 ┌─────────────────────────────────────────────────────────────────┐
 │                      TenantMiddleware                           │
 │              (Initializes tenant context early)                 │
+│                                                                 │
+│  • Checks excluded_routes config → bypasses if matched         │
+│  • Throws TenantNotResolvedException if no tenant resolved     │
 └─────────────────────────────────────────────────────────────────┘
                                 │
                                 ▼
@@ -69,8 +72,8 @@ This package implements a **Shared Database, Shared Schema** pattern with **Row-
 │                                                                 │
 │  ┌─────────────────────────────────────────────────────────┐    │
 │  │         ChainTenantResolver (Default)                   │    │
-│  │   1. UserSessionTenantResolver → getSession()->tenant_id│    │
-│  │   2. DomainTenantResolver → query by domain             │    │
+│  │   1. HeaderTenantResolver → X-Tenant-ID header          │    │
+│  │   2. UserSessionTenantResolver → getSession()->tenant_id│    │
 │  └─────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
                                 │
@@ -95,10 +98,18 @@ The package includes built-in resolvers and supports custom implementations:
 
 | Strategy | Resolver | Example |
 |----------|----------|---------|
+| **Header** | `HeaderTenantResolver` | `X-Tenant-ID` request header |
 | **Session** | `UserSessionTenantResolver` | `getSession()->tenant_id` |
-| **Domain** | `DomainTenantResolver` | Query tenant by `domain` column |
-| **Chain** | `ChainTenantResolver` | Tries session first, then domain |
-| **Custom** | Your implementation | Header, CLI args, message payload |
+| **Chain** | `ChainTenantResolver` | Tries header, then session |
+
+**ChainTenantResolver** - Chains multiple resolvers (default):
+```php
+// Tries UserSessionTenantResolver first, then HeaderTenantResolver
+$resolver = new ChainTenantResolver([
+    new UserSessionTenantResolver(),
+    new HeaderTenantResolver(),
+]);
+```
 
 ---
 
@@ -229,10 +240,10 @@ $tenantId = Tenant::where('domain', $host)->value('id');
 
 **ChainTenantResolver** - Chains multiple resolvers (default):
 ```php
-// Tries UserSessionTenantResolver first, then DomainTenantResolver
+// Tries UserSessionTenantResolver first, then HeaderTenantResolver
 $resolver = new ChainTenantResolver([
     new UserSessionTenantResolver(),
-    new DomainTenantResolver(),
+    new HeaderTenantResolver(),
 ]);
 ```
 
@@ -340,7 +351,6 @@ Add your custom resolver to the chain while keeping the built-in resolvers:
 use Ouredu\MultiTenant\Contracts\TenantResolver;
 use Ouredu\MultiTenant\Resolvers\ChainTenantResolver;
 use Ouredu\MultiTenant\Resolvers\UserSessionTenantResolver;
-use Ouredu\MultiTenant\Resolvers\DomainTenantResolver;
 use App\Resolvers\HeaderTenantResolver;
 use App\Resolvers\JwtTenantResolver;
 
@@ -359,9 +369,6 @@ class AppServiceProvider extends ServiceProvider
                 
                 // Then try session (built-in)
                 new UserSessionTenantResolver(),
-                
-                // Finally try domain (built-in)
-                new DomainTenantResolver(),
             ]);
         });
     }
@@ -378,7 +385,6 @@ namespace App\Resolvers;
 
 use Ouredu\MultiTenant\Resolvers\ChainTenantResolver;
 use Ouredu\MultiTenant\Resolvers\UserSessionTenantResolver;
-use Ouredu\MultiTenant\Resolvers\DomainTenantResolver;
 
 class CustomChainTenantResolver extends ChainTenantResolver
 {
@@ -387,7 +393,6 @@ class CustomChainTenantResolver extends ChainTenantResolver
         return [
             new HeaderTenantResolver(),        // Your custom resolver first
             new UserSessionTenantResolver(),   // Then built-in resolvers
-            new DomainTenantResolver(),
         ];
     }
 }
@@ -493,16 +498,23 @@ HTTP middleware that initializes tenant context early in the request lifecycle.
 
 **Location:** `src/Middleware/TenantMiddleware.php`
 
+**Features:**
+- Excluded routes support - bypass tenant resolution for configured routes
+- Throws `TenantNotResolvedException` when no resolver returns a valid tenant ID
+- Pattern matching with wildcards for route exclusion
+
 **How it connects to ChainTenantResolver:**
 
 The middleware doesn't directly use `ChainTenantResolver`. Instead, it follows this flow:
 
-1. Middleware calls `app(TenantContext::class)`
-2. Service container resolves `TenantContext`
-3. `TenantContext` constructor receives `TenantResolver` (injected via DI)
-4. The `TenantResolver` is whatever you bound in `AppServiceProvider` (default: `ChainTenantResolver`)
-5. When `$context->getTenantId()` is called, it triggers `$resolver->resolveTenantId()`
-6. If you bound `ChainTenantResolver`, it tries each resolver in the chain
+1. Middleware checks if route is in `excluded_routes` config → bypasses if matched
+2. Middleware calls `app(TenantContext::class)`
+3. Service container resolves `TenantContext`
+4. `TenantContext` constructor receives `TenantResolver` (injected via DI)
+5. The `TenantResolver` is whatever you bound in `AppServiceProvider` (default: `ChainTenantResolver`)
+6. When `$context->getTenantId()` is called, it triggers `$resolver->resolveTenantId()`
+7. If tenant ID is `null`, throws `TenantNotResolvedException`
+8. If you bound `ChainTenantResolver`, it tries each resolver in the chain
 
 **Registration:**
 
@@ -518,17 +530,38 @@ Route::middleware(['auth', 'tenant'])->group(function () {
 });
 ```
 
+**Excluded Routes Configuration:**
+
+```php
+// config/multi-tenant.php
+'excluded_routes' => [
+    'health',           // Exact match
+    'api/health',       // Exact path
+    'password/*',       // Wildcard pattern
+    'auth.*',           // Route name pattern
+],
+```
+
 **Implementation:**
 
 ```php
 public function handle(Request $request, Closure $next): mixed
 {
+    // Skip tenant resolution for excluded routes
+    if ($this->isRouteExcluded($request)) {
+        return $next($request);
+    }
+
     /** @var TenantContext $context */
     $context = app(TenantContext::class);
     
     // This triggers lazy resolution via the bound TenantResolver
-    // If ChainTenantResolver is bound, it will try each resolver in order
-    $context->getTenantId();
+    $tenantId = $context->getTenantId();
+    
+    // Throw exception if no tenant resolved
+    if ($tenantId === null) {
+        throw new TenantNotResolvedException();
+    }
     
     return $next($request);
 }
@@ -614,13 +647,13 @@ The connection happens through Laravel's service container:
    use Ouredu\MultiTenant\Contracts\TenantResolver;
    use Ouredu\MultiTenant\Resolvers\ChainTenantResolver;
    use Ouredu\MultiTenant\Resolvers\UserSessionTenantResolver;
-   use Ouredu\MultiTenant\Resolvers\DomainTenantResolver;
-   
+   use App\Resolvers\HeaderTenantResolver;
+   use App\Resolvers\JwtTenantResolver;
+
    $this->app->bind(TenantResolver::class, function ($app) {
        return new ChainTenantResolver([
            new YourCustomResolver(),
            new UserSessionTenantResolver(),
-           new DomainTenantResolver(),
        ]);
    });
    
@@ -664,21 +697,27 @@ The connection happens through Laravel's service container:
 multi-tenant-package/
 ├── config/
 │   └── multi-tenant.php          # Package configuration
+├── lang/
+│   └── en/
+│       └── exceptions.php        # Translatable exception messages
 ├── src/
 │   ├── Commands/
 │   │   ├── TenantAddTraitCommand.php # Add HasTenant trait to models
 │   │   └── TenantMigrateCommand.php  # Add tenant_id to tables
 │   ├── Contracts/
 │   │   └── TenantResolver.php    # Interface for tenant resolution
+│   ├── Exceptions/
+│   │   └── TenantNotResolvedException.php # Thrown when no tenant resolved
 │   ├── Listeners/
 │   │   └── TenantQueryListener.php   # Logs queries without tenant_id
 │   ├── Middleware/
-│   │   └── TenantMiddleware.php  # HTTP middleware
+│   │   └── TenantMiddleware.php  # HTTP middleware (with excluded routes)
 │   ├── Providers/
 │   │   └── TenantServiceProvider.php
 │   ├── Resolvers/
 │   │   ├── ChainTenantResolver.php
 │   │   ├── DomainTenantResolver.php
+│   │   ├── HeaderTenantResolver.php  # Resolve from X-Tenant-ID header
 │   │   └── UserSessionTenantResolver.php
 │   ├── Tenancy/
 │   │   ├── TenantContext.php     # Central tenant service
@@ -722,7 +761,6 @@ If you need to add a custom resolver (e.g., header-based, JWT token) while keepi
 use Ouredu\MultiTenant\Contracts\TenantResolver;
 use Ouredu\MultiTenant\Resolvers\ChainTenantResolver;
 use Ouredu\MultiTenant\Resolvers\UserSessionTenantResolver;
-use Ouredu\MultiTenant\Resolvers\DomainTenantResolver;
 use App\Resolvers\HeaderTenantResolver; // Your custom resolver
 
 class AppServiceProvider extends ServiceProvider
@@ -733,7 +771,6 @@ class AppServiceProvider extends ServiceProvider
             return new ChainTenantResolver([
                 new HeaderTenantResolver(),        // Your custom resolver first
                 new UserSessionTenantResolver(),   // Then built-in resolvers
-                new DomainTenantResolver(),
             ]);
         });
     }
