@@ -20,7 +20,7 @@ class TenantNotResolvedExceptionTest extends TestCase
         $exception = new TenantNotResolvedException();
 
         $this->assertEquals(
-            'Unable to resolve tenant. No resolver returned a valid tenant ID.',
+            'Unable to resolve school. No resolver returned a valid tenant ID.',
             $exception->getMessage()
         );
     }
