@@ -30,7 +30,7 @@ class TenantServiceProvider extends ServiceProvider
         $this->app->bind(TenantResolver::class, ChainTenantResolver::class);
 
         // Scoped binding for TenantContext
-        $this->app->scoped(TenantContext::class, fn(Application $app): TenantContext => new TenantContext($app->make(TenantResolver::class)));
+        $this->app->scoped(TenantContext::class, fn (Application $app): TenantContext => new TenantContext($app->make(TenantResolver::class)));
     }
 
     public function boot(): void
@@ -63,11 +63,11 @@ class TenantServiceProvider extends ServiceProvider
         $publishPath = $this->app->configPath('multi-tenant.php');
 
         // Auto-publish config if it doesn't exist
-        if (!file_exists($publishPath) && file_exists($configPath)) {
+        if (! file_exists($publishPath) && file_exists($configPath)) {
             $this->publishes([$configPath => $publishPath], 'config');
 
             // Auto-copy the config file
-            if (!$this->app->configurationIsCached()) {
+            if (! $this->app->configurationIsCached()) {
                 copy($configPath, $publishPath);
             }
         } else {
@@ -114,7 +114,7 @@ class TenantServiceProvider extends ServiceProvider
         $this->publishes([$this->langPath() => $publishPath], 'multi-tenant-lang');
 
         // Auto-publish lang files if they don't exist
-        if (!is_dir($publishPath) && is_dir($this->langPath())) {
+        if (! is_dir($publishPath) && is_dir($this->langPath())) {
             $this->autoPublishLanguageFiles($publishPath);
         }
     }
@@ -127,11 +127,10 @@ class TenantServiceProvider extends ServiceProvider
         $sourcePath = $this->langPath();
 
         // Create the vendor directory if it doesn't exist
-        if (!is_dir($publishPath)) {
+        if (! is_dir($publishPath)) {
             @mkdir($publishPath, 0o755, true);
         }
 
-        // Copy each language directory
         foreach (scandir($sourcePath) as $langDir) {
             if (in_array($langDir, ['.', '..'], true)) {
                 continue;
@@ -141,11 +140,10 @@ class TenantServiceProvider extends ServiceProvider
             $targetLangPath = "$publishPath/$langDir";
 
             if (is_dir($sourceLangPath)) {
-                if (!is_dir($targetLangPath)) {
+                if (! is_dir($targetLangPath)) {
                     @mkdir($targetLangPath, 0o755, true);
                 }
 
-                // Copy each file in the language directory
                 foreach (scandir($sourceLangPath) as $file) {
                     if (in_array($file, ['.', '..'], true)) {
                         continue;
@@ -154,7 +152,7 @@ class TenantServiceProvider extends ServiceProvider
                     $sourceFile = "$sourceLangPath/$file";
                     $targetFile = "$targetLangPath/$file";
 
-                    if (is_file($sourceFile) && !file_exists($targetFile)) {
+                    if (is_file($sourceFile) && ! file_exists($targetFile)) {
                         @copy($sourceFile, $targetFile);
                     }
                 }
