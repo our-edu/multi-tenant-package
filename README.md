@@ -12,7 +12,7 @@ A Laravel package for building multi-tenant applications. This package provides 
 - **Tenant Context** - Centralized tenant state management across requests, jobs, and commands
 - **Automatic Query Scoping** - All queries automatically filtered by tenant
 - **Model Trait** - Simple `HasTenant` trait for tenant-aware models
-- **Built-in Resolvers** - Session, Domain, and Header resolvers included
+- **Built-in Resolvers** - Session and Header resolvers included
 - **Flexible Resolution** - Implement your own tenant resolution strategy
 - **Middleware Support** - HTTP middleware for tenant resolution with excluded routes
 - **Exception Handling** - Throws exception when tenant cannot be resolved (translatable messages)
@@ -45,7 +45,6 @@ The package will auto-register its service provider and automatically publish th
 The package uses `ChainTenantResolver` by default, which tries resolvers in order:
 1. `HeaderTenantResolver` - Gets `tenant_id` from request header for specific routes
 2. `UserSessionTenantResolver` - Gets `tenant_id` from `getSession()` helper
-3. `DomainTenantResolver` - Gets `tenant_id` by querying tenant table by domain
 
 Configure the session helper in `config/multi-tenant.php`:
 ```php

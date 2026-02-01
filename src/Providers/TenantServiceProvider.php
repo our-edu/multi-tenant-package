@@ -7,6 +7,9 @@ declare(strict_types=1);
  * Multi-Tenant Infrastructure for Laravel Services
  */
 
+/**
+ * Service provider for multi-tenant functionality.
+ */
 namespace Ouredu\MultiTenant\Providers;
 
 use Illuminate\Contracts\Foundation\Application;
@@ -27,11 +30,9 @@ class TenantServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__ . '/../../config/multi-tenant.php', 'multi-tenant');
 
         // Bind ChainTenantResolver as the default TenantResolver
-        // Uses bind() instead of singleton() for Octane compatibility
-        // Users can override this in their AppServiceProvider if needed
         $this->app->bind(TenantResolver::class, ChainTenantResolver::class);
 
-        // TenantContext is scoped (one instance per request) for Octane compatibility
+        // Scoped binding for TenantContext
         $this->app->scoped(TenantContext::class, function (Application $app): TenantContext {
             return new TenantContext($app->make(TenantResolver::class));
         });

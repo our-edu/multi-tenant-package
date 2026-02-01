@@ -8,6 +8,6 @@ declare(strict_types=1);
  */
 
 return [
-    'tenant_not_resolved' => 'Unable to resolve tenant. No resolver returned a valid tenant ID.',
+    'tenant_not_resolved' => 'Unable to resolve school. No resolver returned a valid tenant ID.',
 ];
 

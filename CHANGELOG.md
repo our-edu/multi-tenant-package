@@ -17,7 +17,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `HeaderTenantResolver` - Gets tenant_id from request header for specific routes
 - `UserSessionTenantResolver` - Gets tenant_id from configurable session helper function
-- `DomainTenantResolver` - Gets tenant_id by querying tenant table by domain
 - `ChainTenantResolver` - Chains multiple resolvers together (default)
 - `TenantNotResolvedException` - Thrown when no resolver returns a valid tenant ID
 - `TenantQueryListener` - Logs errors when queries run without tenant_id filter

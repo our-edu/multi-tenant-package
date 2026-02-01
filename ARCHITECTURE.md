@@ -74,7 +74,6 @@ This package implements a **Shared Database, Shared Schema** pattern with **Row-
 │  │         ChainTenantResolver (Default)                   │    │
 │  │   1. HeaderTenantResolver → X-Tenant-ID header          │    │
 │  │   2. UserSessionTenantResolver → getSession()->tenant_id│    │
-│  │   3. DomainTenantResolver → query by domain             │    │
 │  └─────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
                                 │
@@ -101,9 +100,15 @@ The package includes built-in resolvers and supports custom implementations:
 |----------|----------|---------|
 | **Header** | `HeaderTenantResolver` | `X-Tenant-ID` request header |
 | **Session** | `UserSessionTenantResolver` | `getSession()->tenant_id` |
-| **Domain** | `DomainTenantResolver` | Query tenant by `domain` column |
-| **Chain** | `ChainTenantResolver` | Tries header, session, then domain |
-| **Custom** | Your implementation | CLI args, message payload, etc. |
+| **Chain** | `ChainTenantResolver` | Tries header, then session |
+
+**ChainTenantResolver** - Chains multiple resolvers (default):
+```php
+// Tries UserSessionTenantResolver first
+$resolver = new ChainTenantResolver([
+    new UserSessionTenantResolver(),
+]);
+```
 
 ---
 
@@ -234,10 +239,9 @@ $tenantId = Tenant::where('domain', $host)->value('id');
 
 **ChainTenantResolver** - Chains multiple resolvers (default):
 ```php
-// Tries UserSessionTenantResolver first, then DomainTenantResolver
+// Tries UserSessionTenantResolver first
 $resolver = new ChainTenantResolver([
     new UserSessionTenantResolver(),
-    new DomainTenantResolver(),
 ]);
 ```
 
@@ -345,7 +349,6 @@ Add your custom resolver to the chain while keeping the built-in resolvers:
 use Ouredu\MultiTenant\Contracts\TenantResolver;
 use Ouredu\MultiTenant\Resolvers\ChainTenantResolver;
 use Ouredu\MultiTenant\Resolvers\UserSessionTenantResolver;
-use Ouredu\MultiTenant\Resolvers\DomainTenantResolver;
 use App\Resolvers\HeaderTenantResolver;
 use App\Resolvers\JwtTenantResolver;
 
@@ -364,9 +367,6 @@ class AppServiceProvider extends ServiceProvider
                 
                 // Then try session (built-in)
                 new UserSessionTenantResolver(),
-                
-                // Finally try domain (built-in)
-                new DomainTenantResolver(),
             ]);
         });
     }
@@ -383,7 +383,6 @@ namespace App\Resolvers;
 
 use Ouredu\MultiTenant\Resolvers\ChainTenantResolver;
 use Ouredu\MultiTenant\Resolvers\UserSessionTenantResolver;
-use Ouredu\MultiTenant\Resolvers\DomainTenantResolver;
 
 class CustomChainTenantResolver extends ChainTenantResolver
 {
@@ -392,7 +391,6 @@ class CustomChainTenantResolver extends ChainTenantResolver
         return [
             new HeaderTenantResolver(),        // Your custom resolver first
             new UserSessionTenantResolver(),   // Then built-in resolvers
-            new DomainTenantResolver(),
         ];
     }
 }
@@ -647,13 +645,13 @@ The connection happens through Laravel's service container:
    use Ouredu\MultiTenant\Contracts\TenantResolver;
    use Ouredu\MultiTenant\Resolvers\ChainTenantResolver;
    use Ouredu\MultiTenant\Resolvers\UserSessionTenantResolver;
-   use Ouredu\MultiTenant\Resolvers\DomainTenantResolver;
-   
+   use App\Resolvers\HeaderTenantResolver;
+   use App\Resolvers\JwtTenantResolver;
+
    $this->app->bind(TenantResolver::class, function ($app) {
        return new ChainTenantResolver([
            new YourCustomResolver(),
            new UserSessionTenantResolver(),
-           new DomainTenantResolver(),
        ]);
    });
    
@@ -761,7 +759,6 @@ If you need to add a custom resolver (e.g., header-based, JWT token) while keepi
 use Ouredu\MultiTenant\Contracts\TenantResolver;
 use Ouredu\MultiTenant\Resolvers\ChainTenantResolver;
 use Ouredu\MultiTenant\Resolvers\UserSessionTenantResolver;
-use Ouredu\MultiTenant\Resolvers\DomainTenantResolver;
 use App\Resolvers\HeaderTenantResolver; // Your custom resolver
 
 class AppServiceProvider extends ServiceProvider
@@ -772,7 +769,6 @@ class AppServiceProvider extends ServiceProvider
             return new ChainTenantResolver([
                 new HeaderTenantResolver(),        // Your custom resolver first
                 new UserSessionTenantResolver(),   // Then built-in resolvers
-                new DomainTenantResolver(),
             ]);
         });
     }
