@@ -104,9 +104,10 @@ The package includes built-in resolvers and supports custom implementations:
 
 **ChainTenantResolver** - Chains multiple resolvers (default):
 ```php
-// Tries UserSessionTenantResolver first
+// Tries UserSessionTenantResolver first, then HeaderTenantResolver
 $resolver = new ChainTenantResolver([
     new UserSessionTenantResolver(),
+    new HeaderTenantResolver(),
 ]);
 ```
 
@@ -239,9 +240,10 @@ $tenantId = Tenant::where('domain', $host)->value('id');
 
 **ChainTenantResolver** - Chains multiple resolvers (default):
 ```php
-// Tries UserSessionTenantResolver first
+// Tries UserSessionTenantResolver first, then HeaderTenantResolver
 $resolver = new ChainTenantResolver([
     new UserSessionTenantResolver(),
+    new HeaderTenantResolver(),
 ]);
 ```
 
