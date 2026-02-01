@@ -27,7 +27,7 @@ class TenantNotResolvedException extends RuntimeException
     /**
      * Default fallback message when translation is not available.
      */
-    protected const DEFAULT_MESSAGE = 'Unable to resolve tenant. No resolver returned a valid tenant ID.';
+    protected const DEFAULT_MESSAGE = 'Unable to resolve school. No resolver returned a valid tenant ID.';
 
     public function __construct(?string $message = null)
     {
