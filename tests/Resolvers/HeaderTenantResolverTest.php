@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace Tests\Resolvers;
 
+use Exception;
 use Illuminate\Http\Request;
 use Ouredu\MultiTenant\Resolvers\HeaderTenantResolver;
 use Tests\TestCase;
@@ -221,7 +222,7 @@ class HeaderTenantResolverTest extends TestCase
         $request = Request::create('/test', 'GET');
         $request->headers->set('X-Tenant-ID', $jwt);
 
-        $this->expectException(\Exception::class);
+        $this->expectException(Exception::class);
         $this->expectExceptionMessage('Token expired. Please regenerate a new encryption key.');
 
         $resolver->exposedGetTenantIdFromHeader($request);
@@ -239,7 +240,7 @@ class HeaderTenantResolverTest extends TestCase
         $request = Request::create('/test', 'GET');
         $request->headers->set('X-Tenant-ID', 'invalid-jwt-token');
 
-        $this->expectException(\Exception::class);
+        $this->expectException(Exception::class);
         $this->expectExceptionMessage('Syntax error, malformed JSON');
 
         $resolver->exposedGetTenantIdFromHeader($request);

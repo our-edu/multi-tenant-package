@@ -9,13 +9,13 @@ declare(strict_types=1);
 
 namespace Ouredu\MultiTenant\Resolvers;
 
+use Exception;
+use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 use Ouredu\MultiTenant\Contracts\TenantResolver;
 use Throwable;
-use Firebase\JWT\JWT;
-use Firebase\JWT\Key;
-use Exception;
 
 /**
  * HeaderTenantResolver
@@ -40,18 +40,18 @@ class HeaderTenantResolver implements TenantResolver
     public function resolveTenantId(): ?int
     {
         // Skip resolution in console (except when running tests)
-        if (App::runningInConsole() && !App::runningUnitTests()) {
+        if (App::runningInConsole() && ! App::runningUnitTests()) {
             return null;
         }
 
         $request = $this->getRequestFromContainer();
 
-        if (!$request) {
+        if (! $request) {
             return null;
         }
 
         // Check if current route is in the allowed routes list
-        if (!$this->isRouteAllowed($request)) {
+        if (! $this->isRouteAllowed($request)) {
             return null;
         }
 
@@ -89,7 +89,7 @@ class HeaderTenantResolver implements TenantResolver
 
         $currentRoute = $request->route();
 
-        if (!$currentRoute) {
+        if (! $currentRoute) {
             // Fall back to checking by path pattern
             return $this->isPathAllowed($request->path(), $routes);
         }
@@ -148,7 +148,7 @@ class HeaderTenantResolver implements TenantResolver
         if (str_contains($pattern, '*')) {
             $regex = '/^' . str_replace('\*', '.*', preg_quote($pattern, '/')) . '$/';
 
-            return (bool)preg_match($regex, $value);
+            return (bool) preg_match($regex, $value);
         }
 
         return false;
@@ -174,15 +174,15 @@ class HeaderTenantResolver implements TenantResolver
             $secretKey = config('multi-tenant.jwt.secret', 'your-secret-key');
             $decoded = JWT::decode($headerValue, new Key($secretKey, 'HS256'));
 
-            if (!isset($decoded->tenant_id, $decoded->exp)) {
-                throw new \Exception('Invalid token structure. Missing tenant_id or expiration.');
+            if (! isset($decoded->tenant_id, $decoded->exp)) {
+                throw new Exception('Invalid token structure. Missing tenant_id or expiration.');
             }
 
             if ($decoded->exp < time()) {
-                throw new \Exception('Token expired. Please regenerate a new encryption key.');
+                throw new Exception('Token expired. Please regenerate a new encryption key.');
             }
 
-            return (int)$decoded->tenant_id;
+            return (int) $decoded->tenant_id;
         } catch (Throwable $e) {
             throw new Exception($e->getMessage(), 401); // Return exception with 401 status code
         }
