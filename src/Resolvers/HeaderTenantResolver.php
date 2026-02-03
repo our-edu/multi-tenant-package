@@ -171,6 +171,10 @@ class HeaderTenantResolver implements TenantResolver
         }
 
         try {
+            if (substr_count($headerValue, '.') !== 2) {
+                throw new Exception('Invalid token structure. Wrong number of segments.');
+            }
+
             $secretKey = config('multi-tenant.jwt.secret', 'your-secret-key');
             $decoded = JWT::decode($headerValue, new Key($secretKey, 'HS256'));
 
@@ -178,8 +182,12 @@ class HeaderTenantResolver implements TenantResolver
                 throw new Exception('Invalid token structure. Missing tenant_id or expiration.');
             }
 
+            if (! is_numeric($decoded->tenant_id)) {
+                return null;
+            }
+
             if ($decoded->exp < time()) {
-                throw new Exception('Token expired. Please regenerate a new encryption key.');
+                throw new Exception('Expired token');
             }
 
             return (int) $decoded->tenant_id;

@@ -229,7 +229,7 @@ return [
     |
     */
     'jwt' => [
-        'secret' => env('MULTI_TENANT_JWT_SECRET', 'your-secret-key'),
+        'secret' => env('JWT_SECRET', str_repeat('a', 64)), // Ensure the key is long enough
         'algorithm' => env('MULTI_TENANT_JWT_ALGORITHM', 'HS256'),
     ],
 ];

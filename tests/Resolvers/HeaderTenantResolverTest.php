@@ -114,8 +114,15 @@ class HeaderTenantResolverTest extends TestCase
             }
         };
 
+        $payload = [
+            'tenant_id' => 42,
+            'exp' => time() + 1800, // 30 minutes from now
+        ];
+        $secretKey = config('multi-tenant.jwt.secret', str_repeat('a', 64)); // Ensure the key is long enough
+        $jwt = \Firebase\JWT\JWT::encode($payload, $secretKey, 'HS256');
+
         $request = Request::create('/test', 'GET');
-        $request->headers->set('X-Tenant-ID', '42');
+        $request->headers->set('X-Tenant-ID', $jwt);
 
         $this->assertSame(42, $resolver->exposedGetTenantIdFromHeader($request));
     }
@@ -129,8 +136,15 @@ class HeaderTenantResolverTest extends TestCase
             }
         };
 
+        $payload = [
+            'tenant_id' => 'not-a-number',
+            'exp' => time() + 1800, // 30 minutes from now
+        ];
+        $secretKey = config('multi-tenant.jwt.secret', str_repeat('a', 64)); // Ensure the key is long enough
+        $jwt = \Firebase\JWT\JWT::encode($payload, $secretKey, 'HS256');
+
         $request = Request::create('/test', 'GET');
-        $request->headers->set('X-Tenant-ID', 'not-a-number');
+        $request->headers->set('X-Tenant-ID', $jwt);
 
         $this->assertNull($resolver->exposedGetTenantIdFromHeader($request));
     }
@@ -194,7 +208,7 @@ class HeaderTenantResolverTest extends TestCase
             'tenant_id' => 42,
             'exp' => time() + 1800, // 30 minutes from now
         ];
-        $secretKey = config('multi-tenant.jwt.secret', 'your-secret-key');
+        $secretKey = config('multi-tenant.jwt.secret', str_repeat('a', 64)); // Ensure the key is long enough
         $jwt = \Firebase\JWT\JWT::encode($payload, $secretKey, 'HS256');
 
         $request = Request::create('/test', 'GET');
@@ -216,14 +230,14 @@ class HeaderTenantResolverTest extends TestCase
             'tenant_id' => 42,
             'exp' => time() - 3600, // 1 hour ago
         ];
-        $secretKey = config('multi-tenant.jwt.secret', 'your-secret-key');
+        $secretKey = config('multi-tenant.jwt.secret', str_repeat('a', 64)); // Ensure the key is long enough
         $jwt = \Firebase\JWT\JWT::encode($payload, $secretKey, 'HS256');
 
         $request = Request::create('/test', 'GET');
         $request->headers->set('X-Tenant-ID', $jwt);
 
         $this->expectException(Exception::class);
-        $this->expectExceptionMessage('Token expired. Please regenerate a new encryption key.');
+        $this->expectExceptionMessage('Expired token');
 
         $resolver->exposedGetTenantIdFromHeader($request);
     }
@@ -241,7 +255,7 @@ class HeaderTenantResolverTest extends TestCase
         $request->headers->set('X-Tenant-ID', 'invalid-jwt-token');
 
         $this->expectException(Exception::class);
-        $this->expectExceptionMessage('Syntax error, malformed JSON');
+        $this->expectExceptionMessage('Wrong number of segments');
 
         $resolver->exposedGetTenantIdFromHeader($request);
     }
