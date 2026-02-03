@@ -13,6 +13,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 use Ouredu\MultiTenant\Contracts\TenantResolver;
 use Throwable;
+use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
+use Exception;
 
 /**
  * HeaderTenantResolver
@@ -31,22 +34,24 @@ class HeaderTenantResolver implements TenantResolver
 {
     /**
      * Resolve the current tenant ID from the request header.
+     *
+     * @return int|null The resolved tenant ID or null if not found.
      */
     public function resolveTenantId(): ?int
     {
         // Skip resolution in console (except when running tests)
-        if (App::runningInConsole() && ! App::runningUnitTests()) {
+        if (App::runningInConsole() && !App::runningUnitTests()) {
             return null;
         }
 
         $request = $this->getRequestFromContainer();
 
-        if (! $request) {
+        if (!$request) {
             return null;
         }
 
         // Check if current route is in the allowed routes list
-        if (! $this->isRouteAllowed($request)) {
+        if (!$this->isRouteAllowed($request)) {
             return null;
         }
 
@@ -55,6 +60,8 @@ class HeaderTenantResolver implements TenantResolver
 
     /**
      * Get the request from the service container.
+     *
+     * @return Request|null The current request or null if unavailable.
      */
     protected function getRequestFromContainer(): ?Request
     {
@@ -67,6 +74,9 @@ class HeaderTenantResolver implements TenantResolver
 
     /**
      * Check if the current route is in the allowed routes list.
+     *
+     * @param Request $request The current HTTP request.
+     * @return bool True if the route is allowed, false otherwise.
      */
     protected function isRouteAllowed(Request $request): bool
     {
@@ -79,7 +89,7 @@ class HeaderTenantResolver implements TenantResolver
 
         $currentRoute = $request->route();
 
-        if (! $currentRoute) {
+        if (!$currentRoute) {
             // Fall back to checking by path pattern
             return $this->isPathAllowed($request->path(), $routes);
         }
@@ -104,6 +114,10 @@ class HeaderTenantResolver implements TenantResolver
 
     /**
      * Check if the request path matches any of the allowed routes.
+     *
+     * @param string $path The request path.
+     * @param array $routes The list of allowed routes.
+     * @return bool True if the path is allowed, false otherwise.
      */
     protected function isPathAllowed(string $path, array $routes): bool
     {
@@ -118,6 +132,10 @@ class HeaderTenantResolver implements TenantResolver
 
     /**
      * Check if a value matches a pattern (supports wildcards).
+     *
+     * @param string $value The value to check.
+     * @param string $pattern The pattern to match against.
+     * @return bool True if the value matches the pattern, false otherwise.
      */
     protected function matchesPattern(string $value, string $pattern): bool
     {
@@ -130,14 +148,18 @@ class HeaderTenantResolver implements TenantResolver
         if (str_contains($pattern, '*')) {
             $regex = '/^' . str_replace('\*', '.*', preg_quote($pattern, '/')) . '$/';
 
-            return (bool) preg_match($regex, $value);
+            return (bool)preg_match($regex, $value);
         }
 
         return false;
     }
 
     /**
-     * Get the tenant ID from the request header.
+     * Get the tenant ID from the request header using JWT.
+     *
+     * @param Request $request The current HTTP request.
+     * @return int|null The tenant ID or null if not found.
+     * @throws Exception If the token is invalid or expired.
      */
     protected function getTenantIdFromHeader(Request $request): ?int
     {
@@ -148,16 +170,28 @@ class HeaderTenantResolver implements TenantResolver
             return null;
         }
 
-        // Ensure the value is numeric and convert to integer
-        if (! is_numeric($headerValue)) {
-            return null;
-        }
+        try {
+            $secretKey = config('multi-tenant.jwt.secret', 'your-secret-key');
+            $decoded = JWT::decode($headerValue, new Key($secretKey, 'HS256'));
 
-        return (int) $headerValue;
+            if (!isset($decoded->tenant_id, $decoded->exp)) {
+                throw new \Exception('Invalid token structure. Missing tenant_id or expiration.');
+            }
+
+            if ($decoded->exp < time()) {
+                throw new \Exception('Token expired. Please regenerate a new encryption key.');
+            }
+
+            return (int)$decoded->tenant_id;
+        } catch (Throwable $e) {
+            throw new Exception($e->getMessage(), 401); // Return exception with 401 status code
+        }
     }
 
     /**
      * Get the configured header name.
+     *
+     * @return string The header name to use for tenant resolution.
      */
     protected function getHeaderName(): string
     {
@@ -166,6 +200,8 @@ class HeaderTenantResolver implements TenantResolver
 
     /**
      * Get the list of routes where header resolution is allowed.
+     *
+     * @return array The list of allowed routes.
      */
     protected function getAllowedRoutes(): array
     {

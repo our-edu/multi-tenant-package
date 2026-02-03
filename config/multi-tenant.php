@@ -218,4 +218,18 @@ return [
         */
         'primary_keys' => ['id', 'uuid'],
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | JWT Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for JWT used in HeaderTenantResolver.
+    | This includes the secret key and algorithm used for encoding/decoding.
+    |
+    */
+    'jwt' => [
+        'secret' => env('MULTI_TENANT_JWT_SECRET', 'your-secret-key'),
+        'algorithm' => env('MULTI_TENANT_JWT_ALGORITHM', 'HS256'),
+    ],
 ];

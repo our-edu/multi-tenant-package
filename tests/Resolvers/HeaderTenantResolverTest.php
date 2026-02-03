@@ -179,4 +179,69 @@ class HeaderTenantResolverTest extends TestCase
         $this->assertTrue($resolver->exposedIsPathAllowed('webhook', $routes));
         $this->assertFalse($resolver->exposedIsPathAllowed('api/internal/users', $routes));
     }
+
+    public function testGetTenantIdFromHeaderDecodesValidJwt(): void
+    {
+        $resolver = new class () extends HeaderTenantResolver {
+            public function exposedGetTenantIdFromHeader(Request $request): ?int
+            {
+                return $this->getTenantIdFromHeader($request);
+            }
+        };
+
+        $payload = [
+            'tenant_id' => 42,
+            'exp' => time() + 1800, // 30 minutes from now
+        ];
+        $secretKey = config('multi-tenant.jwt.secret', 'your-secret-key');
+        $jwt = \Firebase\JWT\JWT::encode($payload, $secretKey, 'HS256');
+
+        $request = Request::create('/test', 'GET');
+        $request->headers->set('X-Tenant-ID', $jwt);
+
+        $this->assertSame(42, $resolver->exposedGetTenantIdFromHeader($request));
+    }
+
+    public function testGetTenantIdFromHeaderThrowsExceptionForExpiredJwt(): void
+    {
+        $resolver = new class () extends HeaderTenantResolver {
+            public function exposedGetTenantIdFromHeader(Request $request): ?int
+            {
+                return $this->getTenantIdFromHeader($request);
+            }
+        };
+
+        $payload = [
+            'tenant_id' => 42,
+            'exp' => time() - 3600, // 1 hour ago
+        ];
+        $secretKey = config('multi-tenant.jwt.secret', 'your-secret-key');
+        $jwt = \Firebase\JWT\JWT::encode($payload, $secretKey, 'HS256');
+
+        $request = Request::create('/test', 'GET');
+        $request->headers->set('X-Tenant-ID', $jwt);
+
+        $this->expectException(\Exception::class);
+        $this->expectExceptionMessage('Token expired. Please regenerate a new encryption key.');
+
+        $resolver->exposedGetTenantIdFromHeader($request);
+    }
+
+    public function testGetTenantIdFromHeaderThrowsExceptionForInvalidJwt(): void
+    {
+        $resolver = new class () extends HeaderTenantResolver {
+            public function exposedGetTenantIdFromHeader(Request $request): ?int
+            {
+                return $this->getTenantIdFromHeader($request);
+            }
+        };
+
+        $request = Request::create('/test', 'GET');
+        $request->headers->set('X-Tenant-ID', 'invalid-jwt-token');
+
+        $this->expectException(\Exception::class);
+        $this->expectExceptionMessage('Syntax error, malformed JSON');
+
+        $resolver->exposedGetTenantIdFromHeader($request);
+    }
 }
