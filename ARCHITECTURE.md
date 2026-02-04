@@ -98,14 +98,16 @@ The package includes built-in resolvers and supports custom implementations:
 
 | Strategy | Resolver | Example |
 |----------|----------|---------|
-| **Header** | `HeaderTenantResolver` | JWT token in `X-Tenant-ID` header |
+| **Header** | `HeaderTenantResolver` | `X-Tenant-ID` request header |
+| **Session** | `UserSessionTenantResolver` | `getSession()->tenant_id` |
+| **Chain** | `ChainTenantResolver` | Tries header, then session |
 
 **ChainTenantResolver** - Chains multiple resolvers (default):
 ```php
-// Tries JwtTenantResolver first, then UserSessionTenantResolver
+// Tries UserSessionTenantResolver first, then HeaderTenantResolver
 $resolver = new ChainTenantResolver([
-    new JwtTenantResolver(),
     new UserSessionTenantResolver(),
+    new HeaderTenantResolver(),
 ]);
 ```
 
@@ -302,13 +304,13 @@ class JwtTenantResolver implements TenantResolver
     public function resolveTenantId(): ?int
     {
         try {
-            $token = request()->header('X-Tenant-ID');
+            $token = request()->bearerToken();
             if (!$token) {
                 return null;
             }
-
+            
             $payload = json_decode(base64_decode(explode('.', $token)[1]), true);
-
+            
             return isset($payload['tenant_id']) ? (int) $payload['tenant_id'] : null;
         } catch (\Exception $e) {
             return null;

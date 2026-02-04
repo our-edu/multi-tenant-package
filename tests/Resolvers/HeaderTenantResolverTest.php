@@ -9,7 +9,6 @@ declare(strict_types=1);
 
 namespace Tests\Resolvers;
 
-use Exception;
 use Illuminate\Http\Request;
 use Ouredu\MultiTenant\Resolvers\HeaderTenantResolver;
 use Tests\TestCase;
@@ -114,15 +113,8 @@ class HeaderTenantResolverTest extends TestCase
             }
         };
 
-        $payload = [
-            'tenant_id' => 42,
-            'exp' => time() + 1800, // 30 minutes from now
-        ];
-        $secretKey = config('multi-tenant.jwt.secret', str_repeat('a', 64)); // Ensure the key is long enough
-        $jwt = \Firebase\JWT\JWT::encode($payload, $secretKey, 'HS256');
-
         $request = Request::create('/test', 'GET');
-        $request->headers->set('X-Tenant-ID', $jwt);
+        $request->headers->set('X-Tenant-ID', '42');
 
         $this->assertSame(42, $resolver->exposedGetTenantIdFromHeader($request));
     }
@@ -136,15 +128,8 @@ class HeaderTenantResolverTest extends TestCase
             }
         };
 
-        $payload = [
-            'tenant_id' => 'not-a-number',
-            'exp' => time() + 1800, // 30 minutes from now
-        ];
-        $secretKey = config('multi-tenant.jwt.secret', str_repeat('a', 64)); // Ensure the key is long enough
-        $jwt = \Firebase\JWT\JWT::encode($payload, $secretKey, 'HS256');
-
         $request = Request::create('/test', 'GET');
-        $request->headers->set('X-Tenant-ID', $jwt);
+        $request->headers->set('X-Tenant-ID', 'not-a-number');
 
         $this->assertNull($resolver->exposedGetTenantIdFromHeader($request));
     }
@@ -193,70 +178,5 @@ class HeaderTenantResolverTest extends TestCase
         $this->assertTrue($resolver->exposedIsPathAllowed('api/external/users', $routes));
         $this->assertTrue($resolver->exposedIsPathAllowed('webhook', $routes));
         $this->assertFalse($resolver->exposedIsPathAllowed('api/internal/users', $routes));
-    }
-
-    public function testGetTenantIdFromHeaderDecodesValidJwt(): void
-    {
-        $resolver = new class () extends HeaderTenantResolver {
-            public function exposedGetTenantIdFromHeader(Request $request): ?int
-            {
-                return $this->getTenantIdFromHeader($request);
-            }
-        };
-
-        $payload = [
-            'tenant_id' => 42,
-            'exp' => time() + 1800, // 30 minutes from now
-        ];
-        $secretKey = config('multi-tenant.jwt.secret', str_repeat('a', 64)); // Ensure the key is long enough
-        $jwt = \Firebase\JWT\JWT::encode($payload, $secretKey, 'HS256');
-
-        $request = Request::create('/test', 'GET');
-        $request->headers->set('X-Tenant-ID', $jwt);
-
-        $this->assertSame(42, $resolver->exposedGetTenantIdFromHeader($request));
-    }
-
-    public function testGetTenantIdFromHeaderThrowsExceptionForExpiredJwt(): void
-    {
-        $resolver = new class () extends HeaderTenantResolver {
-            public function exposedGetTenantIdFromHeader(Request $request): ?int
-            {
-                return $this->getTenantIdFromHeader($request);
-            }
-        };
-
-        $payload = [
-            'tenant_id' => 42,
-            'exp' => time() - 3600, // 1 hour ago
-        ];
-        $secretKey = config('multi-tenant.jwt.secret', str_repeat('a', 64)); // Ensure the key is long enough
-        $jwt = \Firebase\JWT\JWT::encode($payload, $secretKey, 'HS256');
-
-        $request = Request::create('/test', 'GET');
-        $request->headers->set('X-Tenant-ID', $jwt);
-
-        $this->expectException(Exception::class);
-        $this->expectExceptionMessage('Expired token');
-
-        $resolver->exposedGetTenantIdFromHeader($request);
-    }
-
-    public function testGetTenantIdFromHeaderThrowsExceptionForInvalidJwt(): void
-    {
-        $resolver = new class () extends HeaderTenantResolver {
-            public function exposedGetTenantIdFromHeader(Request $request): ?int
-            {
-                return $this->getTenantIdFromHeader($request);
-            }
-        };
-
-        $request = Request::create('/test', 'GET');
-        $request->headers->set('X-Tenant-ID', 'invalid-jwt-token');
-
-        $this->expectException(Exception::class);
-        $this->expectExceptionMessage('Wrong number of segments');
-
-        $resolver->exposedGetTenantIdFromHeader($request);
     }
 }
