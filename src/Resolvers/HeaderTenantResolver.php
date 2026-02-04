@@ -9,9 +9,6 @@ declare(strict_types=1);
 
 namespace Ouredu\MultiTenant\Resolvers;
 
-use Exception;
-use Firebase\JWT\JWT;
-use Firebase\JWT\Key;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 use Ouredu\MultiTenant\Contracts\TenantResolver;
@@ -34,8 +31,6 @@ class HeaderTenantResolver implements TenantResolver
 {
     /**
      * Resolve the current tenant ID from the request header.
-     *
-     * @return int|null The resolved tenant ID or null if not found.
      */
     public function resolveTenantId(): ?int
     {
@@ -60,8 +55,6 @@ class HeaderTenantResolver implements TenantResolver
 
     /**
      * Get the request from the service container.
-     *
-     * @return Request|null The current request or null if unavailable.
      */
     protected function getRequestFromContainer(): ?Request
     {
@@ -74,9 +67,6 @@ class HeaderTenantResolver implements TenantResolver
 
     /**
      * Check if the current route is in the allowed routes list.
-     *
-     * @param Request $request The current HTTP request.
-     * @return bool True if the route is allowed, false otherwise.
      */
     protected function isRouteAllowed(Request $request): bool
     {
@@ -114,10 +104,6 @@ class HeaderTenantResolver implements TenantResolver
 
     /**
      * Check if the request path matches any of the allowed routes.
-     *
-     * @param string $path The request path.
-     * @param array $routes The list of allowed routes.
-     * @return bool True if the path is allowed, false otherwise.
      */
     protected function isPathAllowed(string $path, array $routes): bool
     {
@@ -132,10 +118,6 @@ class HeaderTenantResolver implements TenantResolver
 
     /**
      * Check if a value matches a pattern (supports wildcards).
-     *
-     * @param string $value The value to check.
-     * @param string $pattern The pattern to match against.
-     * @return bool True if the value matches the pattern, false otherwise.
      */
     protected function matchesPattern(string $value, string $pattern): bool
     {
@@ -155,11 +137,7 @@ class HeaderTenantResolver implements TenantResolver
     }
 
     /**
-     * Get the tenant ID from the request header using JWT.
-     *
-     * @param Request $request The current HTTP request.
-     * @return int|null The tenant ID or null if not found.
-     * @throws Exception If the token is invalid or expired.
+     * Get the tenant ID from the request header.
      */
     protected function getTenantIdFromHeader(Request $request): ?int
     {
@@ -170,36 +148,16 @@ class HeaderTenantResolver implements TenantResolver
             return null;
         }
 
-        try {
-            if (substr_count($headerValue, '.') !== 2) {
-                throw new Exception('Invalid token structure. Wrong number of segments.');
-            }
-
-            $secretKey = config('multi-tenant.jwt.secret', 'your-secret-key');
-            $decoded = JWT::decode($headerValue, new Key($secretKey, 'HS256'));
-
-            if (! isset($decoded->tenant_id, $decoded->exp)) {
-                throw new Exception('Invalid token structure. Missing tenant_id or expiration.');
-            }
-
-            if (! is_numeric($decoded->tenant_id)) {
-                return null;
-            }
-
-            if ($decoded->exp < time()) {
-                throw new Exception('Expired token');
-            }
-
-            return (int) $decoded->tenant_id;
-        } catch (Throwable $e) {
-            throw new Exception($e->getMessage(), 401); // Return exception with 401 status code
+        // Ensure the value is numeric and convert to integer
+        if (! is_numeric($headerValue)) {
+            return null;
         }
+
+        return (int) $headerValue;
     }
 
     /**
      * Get the configured header name.
-     *
-     * @return string The header name to use for tenant resolution.
      */
     protected function getHeaderName(): string
     {
@@ -208,8 +166,6 @@ class HeaderTenantResolver implements TenantResolver
 
     /**
      * Get the list of routes where header resolution is allowed.
-     *
-     * @return array The list of allowed routes.
      */
     protected function getAllowedRoutes(): array
     {
