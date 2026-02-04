@@ -326,8 +326,37 @@ For API routes where the tenant ID is passed as a header (e.g., external integra
 
 Then send requests with the header:
 ```bash
-curl -H "X-Tenant-ID: 123" https://api.example.com/api/v1/webhook/process
+curl -H "X-Tenant-ID: <your-jwt-token>" https://api.example.com/api/v1/webhook/process
 ```
+
+Replace `<your-jwt-token>` with a valid JWT token containing the `tenant_id` and `exp` claims.
+
+### JWT Support in HeaderTenantResolver
+
+The `HeaderTenantResolver` now supports JWT-based tenant ID resolution. The JWT token must include the following claims:
+
+- `tenant_id` (integer): The tenant ID to resolve.
+- `exp` (integer): The expiration timestamp of the token.
+
+#### Configuration
+
+Update the `config/multi-tenant.php` file to set the JWT secret key:
+
+```php
+'jwt' => [
+    'secret' => env('JWT_SECRET', 'your-secret-key'),
+],
+```
+
+#### Example Usage
+
+Send the JWT token in the `X-Tenant-ID` header:
+
+```bash
+curl -H "X-Tenant-ID: <your-jwt-token>" https://example.com/api/resource
+```
+
+The resolver will decode the token and extract the `tenant_id`. If the token is invalid or expired, an exception will be thrown with a 401 status code.
 
 ### Queued Jobs
 
