@@ -69,15 +69,29 @@ tests/
 ├── .gitignore                          # Test artifacts to ignore
 ├── bootstrap.php                       # Test bootstrap configuration
 ├── TestCase.php                        # Base test case class
+├── Commands/
+│   ├── TenantAddListenerTraitCommandTest.php  # Listener trait command tests
+│   ├── TenantAddTraitCommandTest.php   # Model trait command tests
+│   └── TenantMigrateCommandTest.php    # Migration command tests
 ├── Tenancy/
 │   ├── TenantContextTest.php          # TenantContext tests
 │   └── TenantScopeTest.php            # TenantScope tests
 ├── Traits/
-│   └── HasTenantTest.php              # HasTenant trait tests
+│   ├── HasTenantTest.php              # HasTenant trait tests
+│   └── SetsTenantFromPayloadTest.php  # SetsTenantFromPayload trait tests
 ├── Middleware/
 │   └── TenantMiddlewareTest.php       # TenantMiddleware tests
+├── Resolvers/
+│   ├── ChainTenantResolverTest.php    # ChainTenantResolver tests
+│   ├── DomainTenantResolverTest.php   # DomainTenantResolver tests
+│   ├── HeaderTenantResolverTest.php   # HeaderTenantResolver tests
+│   └── UserSessionTenantResolverTest.php # UserSessionTenantResolver tests
 ├── Contracts/
 │   └── TenantResolverTest.php         # TenantResolver contract tests
+├── Listeners/
+│   └── TenantQueryListenerTest.php    # TenantQueryListener tests
+├── Exceptions/
+│   └── TenantNotResolvedExceptionTest.php # Exception tests
 └── Providers/
     └── TenantServiceProviderTest.php  # TenantServiceProvider tests
 ```

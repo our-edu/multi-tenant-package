@@ -702,6 +702,7 @@ multi-tenant-package/
 │       └── exceptions.php        # Translatable exception messages
 ├── src/
 │   ├── Commands/
+│   │   ├── TenantAddListenerTraitCommand.php # Add SetsTenantFromPayload trait to listeners
 │   │   ├── TenantAddTraitCommand.php # Add HasTenant trait to models
 │   │   └── TenantMigrateCommand.php  # Add tenant_id to tables
 │   ├── Contracts/
@@ -723,7 +724,8 @@ multi-tenant-package/
 │   │   ├── TenantContext.php     # Central tenant service
 │   │   └── TenantScope.php       # Global query scope
 │   └── Traits/
-│       └── HasTenant.php         # Model trait
+│       ├── HasTenant.php         # Model trait
+│       └── SetsTenantFromPayload.php # Listener trait
 ├── tests/
 │   └── ...
 ├── composer.json
@@ -830,6 +832,72 @@ Schema::table('your_table', function (Blueprint $table) {
     $table->unsignedBigInteger('tenant_id')->nullable()->index();
 });
 ```
+
+### Step 6: Set Tenant in Event/Message Listeners
+
+For services that receive messages/events with tenant context, use the `SetsTenantFromPayload` trait:
+
+```php
+use Ouredu\MultiTenant\Traits\SetsTenantFromPayload;
+use Ouredu\MultiTenant\Exceptions\TenantNotFoundException;
+
+class OrderCreatedListener
+{
+    use SetsTenantFromPayload;
+
+    public function handle(OrderCreatedEvent $event): void
+    {
+        // Sets tenant from payload, throws TenantNotFoundException if not found
+        $this->setTenantFromPayload($event->payload);
+
+        // All queries now scoped to the tenant from the payload
+        $user = User::find($event->userId);
+    }
+}
+```
+
+**Automatic Trait Addition via Command:**
+
+Instead of manually adding the trait to each listener, use the artisan command:
+
+```bash
+# From a config file (by name, e.g., sqs_events.php in config directory)
+php artisan tenant:add-listener-trait --config=sqs_events
+
+# Preview changes first
+php artisan tenant:add-listener-trait --config=sqs_events --dry-run
+
+# From multi-tenant.php config
+php artisan tenant:add-listener-trait
+
+# Specific listener class
+php artisan tenant:add-listener-trait --listener="App\Listeners\PaymentCreatedListener"
+```
+
+The command supports various config file formats:
+- SQS events style: `'event.type' => ListenerClass::class`
+- EventServiceProvider style: `['Event' => [ListenerClass::class]]`
+- Simple array: `[ListenerClass::class, ...]`
+
+**Configuration:**
+
+```php
+// config/multi-tenant.php
+'listeners' => [
+    \App\Listeners\PaymentCreatedListener::class,
+    \App\Listeners\OrderUpdatedListener::class,
+],
+
+'listener' => [
+    // When tenant_id is not in payload, query for active tenant (where is_active = true)
+    'fallback_to_database' => env('MULTI_TENANT_LISTENER_FALLBACK_DB', false),
+],
+```
+
+**Resolution Logic:**
+1. First checks if `tenant_id` exists in the payload (array or object)
+2. If not found and `fallback_to_database` is `true`, queries tenant table where `is_active = true`
+3. If fallback is `false` or no active tenant found, throws `TenantNotFoundException`
 
 ---
 
@@ -1061,6 +1129,18 @@ return [
         // 'orders' => \App\Models\Order::class,
     ],
     
+    // Listeners that need SetsTenantFromPayload trait
+    // Used by: tenant:add-listener-trait command
+    'listeners' => [
+        // \App\Listeners\PaymentCreatedListener::class,
+        // \App\Listeners\OrderUpdatedListener::class,
+    ],
+    
+    // Listener tenant resolution (for event/message listeners)
+    'listener' => [
+        'fallback_to_database' => false,  // Fallback to query tenant where is_active = true
+    ],
+    
     // Query listener (logs queries without tenant_id filter)
     'query_listener' => [
         'enabled' => true,
@@ -1081,14 +1161,13 @@ return [
 | `UserSessionTenantResolver` | Resolves tenant_id from getSession() |
 | `DomainTenantResolver` | Resolves tenant_id by domain query |
 | `HasTenant` | Model trait for tenant relationship |
+| `SetsTenantFromPayload` | Trait for setting tenant in event/message listeners |
 | `TenantMiddleware` | HTTP request middleware |
 | `TenantMigrateCommand` | Artisan command to add tenant_id to tables |
 | `TenantAddTraitCommand` | Artisan command to add HasTenant trait to models |
+| `TenantAddListenerTraitCommand` | Artisan command to add SetsTenantFromPayload trait to listeners |
 | `TenantQueryListener` | Logs queries without tenant_id filter |
-| `HasTenant` | Model trait for tenant relationship |
-| `TenantMiddleware` | HTTP request middleware |
-| `TenantMigrateCommand` | Artisan command to add tenant_id to tables |
-| `TenantQueryListener` | Logs queries without tenant_id filter |
+| `TenantNotFoundException` | Exception for missing tenant context |
 
 ### Resolver Registration Quick Reference
 
@@ -1101,6 +1180,6 @@ return [
 
 ---
 
-**Document Version:** 1.0  
-**Last Updated:** January 2026  
+**Document Version:** 1.1  
+**Last Updated:** February 2026  
 **Maintainer:** OurEdu Development Team

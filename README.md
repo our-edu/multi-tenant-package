@@ -43,8 +43,8 @@ The package will auto-register its service provider and automatically publish th
 ### 1. Configure (Optional)
 
 The package uses `ChainTenantResolver` by default, which tries resolvers in order:
-1. `HeaderTenantResolver` - Gets `tenant_id` from request header for specific routes
-2. `UserSessionTenantResolver` - Gets `tenant_id` from `getSession()` helper
+1. `UserSessionTenantResolver` - Gets `tenant_id` from `getSession()` helper
+2. `DomainTenantResolver` - Gets `tenant_id` by querying tenant table by domain
 
 Configure the session helper in `config/multi-tenant.php`:
 ```php
@@ -355,6 +355,66 @@ class ProcessInvoice implements ShouldQueue
 }
 ```
 
+### Event/Message Listeners
+
+For listeners that receive messages with tenant context, use the `SetsTenantFromPayload` trait:
+
+```php
+use Ouredu\MultiTenant\Traits\SetsTenantFromPayload;
+
+class PaymentCreatedListener
+{
+    use SetsTenantFromPayload;
+
+    public function handle(PaymentCreatedEvent $event): void
+    {
+        // Set tenant from message payload
+        // Throws TenantNotFoundException if tenant_id not found and fallback disabled
+        $this->setTenantFromPayload($event->payload);
+
+        // Now all queries will be tenant-scoped
+        $order = Order::find($event->orderId);
+    }
+}
+```
+
+**Automatically Add Trait to Listeners**
+
+Use the artisan command to add `SetsTenantFromPayload` trait to all listeners in a config file:
+
+```bash
+# From a config file (by name, e.g., sqs_events.php in config directory)
+php artisan tenant:add-listener-trait --config=sqs_events
+
+# Preview changes without modifying files
+php artisan tenant:add-listener-trait --config=sqs_events --dry-run
+
+# From multi-tenant.php config
+php artisan tenant:add-listener-trait
+
+# Add trait to specific listener class
+php artisan tenant:add-listener-trait --listener="App\Listeners\PaymentCreatedListener"
+```
+
+The command supports various config file formats:
+- SQS events style: `'event.type' => ListenerClass::class`
+- EventServiceProvider style: `['Event' => [ListenerClass::class]]`
+- Simple array: `[ListenerClass::class, ...]`
+
+Configure the listener fallback behavior in `config/multi-tenant.php`:
+
+```php
+'listener' => [
+    // Fallback to database when tenant_id not in payload (queries where is_active = true)
+    'fallback_to_database' => env('MULTI_TENANT_LISTENER_FALLBACK_DB', false),
+],
+```
+
+The trait works with both array and object payloads:
+- First checks if `tenant_id` exists in the payload
+- If not found and `fallback_to_database` is true, queries tenant table where `is_active = true`
+- If fallback is disabled or no active tenant found, throws `TenantNotFoundException`
+
 ### Artisan Commands
 
 Run commands for specific tenants:
@@ -435,6 +495,12 @@ return [
     'tenant_not_resolved' => 'Impossible de résoudre le locataire. Aucun résolveur n\'a retourné un ID de locataire valide.',
 ];
 ```
+
+### SetsTenantFromPayload Trait
+
+| Method | Description |
+|--------|-------------|
+| `setTenantFromPayload(array\|object $payload): void` | Set tenant context from payload, throws TenantNotFoundException if not found |
 
 ## Testing
 
