@@ -666,6 +666,7 @@ multi-tenant-package/
 │   └── multi-tenant.php          # Package configuration
 ├── src/
 │   ├── Commands/
+│   │   ├── TenantAddListenerTraitCommand.php # Add SetsTenantFromPayload trait to listeners
 │   │   ├── TenantAddTraitCommand.php # Add HasTenant trait to models
 │   │   └── TenantMigrateCommand.php  # Add tenant_id to tables
 │   ├── Contracts/
@@ -684,7 +685,8 @@ multi-tenant-package/
 │   │   ├── TenantContext.php     # Central tenant service
 │   │   └── TenantScope.php       # Global query scope
 │   └── Traits/
-│       └── HasTenant.php         # Model trait
+│       ├── HasTenant.php         # Model trait
+│       └── SetsTenantFromPayload.php # Listener trait
 ├── tests/
 │   └── ...
 ├── composer.json
@@ -817,10 +819,38 @@ class OrderCreatedListener
 }
 ```
 
+**Automatic Trait Addition via Command:**
+
+Instead of manually adding the trait to each listener, use the artisan command:
+
+```bash
+# From a config file (by name, e.g., sqs_events.php in config directory)
+php artisan tenant:add-listener-trait --config=sqs_events
+
+# Preview changes first
+php artisan tenant:add-listener-trait --config=sqs_events --dry-run
+
+# From multi-tenant.php config
+php artisan tenant:add-listener-trait
+
+# Specific listener class
+php artisan tenant:add-listener-trait --listener="App\Listeners\PaymentCreatedListener"
+```
+
+The command supports various config file formats:
+- SQS events style: `'event.type' => ListenerClass::class`
+- EventServiceProvider style: `['Event' => [ListenerClass::class]]`
+- Simple array: `[ListenerClass::class, ...]`
+
 **Configuration:**
 
 ```php
 // config/multi-tenant.php
+'listeners' => [
+    \App\Listeners\PaymentCreatedListener::class,
+    \App\Listeners\OrderUpdatedListener::class,
+],
+
 'listener' => [
     // When tenant_id is not in payload, query for active tenant (where is_active = true)
     'fallback_to_database' => env('MULTI_TENANT_LISTENER_FALLBACK_DB', false),
@@ -1062,6 +1092,13 @@ return [
         // 'orders' => \App\Models\Order::class,
     ],
     
+    // Listeners that need SetsTenantFromPayload trait
+    // Used by: tenant:add-listener-trait command
+    'listeners' => [
+        // \App\Listeners\PaymentCreatedListener::class,
+        // \App\Listeners\OrderUpdatedListener::class,
+    ],
+    
     // Listener tenant resolution (for event/message listeners)
     'listener' => [
         'fallback_to_database' => false,  // Fallback to query tenant where is_active = true
@@ -1090,6 +1127,7 @@ return [
 | `TenantMiddleware` | HTTP request middleware |
 | `TenantMigrateCommand` | Artisan command to add tenant_id to tables |
 | `TenantAddTraitCommand` | Artisan command to add HasTenant trait to models |
+| `TenantAddListenerTraitCommand` | Artisan command to add SetsTenantFromPayload trait to listeners |
 | `TenantQueryListener` | Logs queries without tenant_id filter |
 | `TenantNotFoundException` | Exception for missing tenant context |
 
@@ -1104,6 +1142,6 @@ return [
 
 ---
 
-**Document Version:** 1.0  
-**Last Updated:** January 2026  
+**Document Version:** 1.1  
+**Last Updated:** February 2026  
 **Maintainer:** OurEdu Development Team

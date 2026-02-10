@@ -13,6 +13,7 @@ use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
+use Ouredu\MultiTenant\Commands\TenantAddListenerTraitCommand;
 use Ouredu\MultiTenant\Commands\TenantAddTraitCommand;
 use Ouredu\MultiTenant\Commands\TenantMigrateCommand;
 use Ouredu\MultiTenant\Contracts\TenantResolver;
@@ -53,6 +54,7 @@ class TenantServiceProvider extends ServiceProvider
             $this->commands([
                 TenantMigrateCommand::class,
                 TenantAddTraitCommand::class,
+                TenantAddListenerTraitCommand::class,
             ]);
         }
     }

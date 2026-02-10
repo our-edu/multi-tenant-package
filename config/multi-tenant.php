@@ -109,6 +109,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Listeners
+    |--------------------------------------------------------------------------
+    |
+    | Array of listener classes that should have SetsTenantFromPayload trait.
+    | Used by:
+    | - `php artisan tenant:add-listener-trait` command to add the trait
+    |
+    | Format: \App\Listeners\ListenerClass::class
+    |
+    */
+    'listeners' => [
+        // \App\Listeners\PaymentCreatedListener::class,
+        // \App\Listeners\OrderUpdatedListener::class,
+        // \App\Listeners\UserRegisteredListener::class,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Listener Tenant Resolution
     |--------------------------------------------------------------------------
     |

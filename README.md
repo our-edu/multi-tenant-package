@@ -295,6 +295,29 @@ class PaymentCreatedListener
 }
 ```
 
+**Automatically Add Trait to Listeners**
+
+Use the artisan command to add `SetsTenantFromPayload` trait to all listeners in a config file:
+
+```bash
+# From a config file (by name, e.g., sqs_events.php in config directory)
+php artisan tenant:add-listener-trait --config=sqs_events
+
+# Preview changes without modifying files
+php artisan tenant:add-listener-trait --config=sqs_events --dry-run
+
+# From multi-tenant.php config
+php artisan tenant:add-listener-trait
+
+# Add trait to specific listener class
+php artisan tenant:add-listener-trait --listener="App\Listeners\PaymentCreatedListener"
+```
+
+The command supports various config file formats:
+- SQS events style: `'event.type' => ListenerClass::class`
+- EventServiceProvider style: `['Event' => [ListenerClass::class]]`
+- Simple array: `[ListenerClass::class, ...]`
+
 Configure the listener fallback behavior in `config/multi-tenant.php`:
 
 ```php

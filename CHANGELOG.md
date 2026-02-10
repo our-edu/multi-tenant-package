@@ -22,7 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `runForTenant(int $tenantId, callable $callback)` method on TenantContext
 - Configurable session helper function name via config
 - `tenant:migrate` command to add tenant_id column to configured tables
+- `tenant:add-trait` command to add HasTenant trait to model classes
+- `tenant:add-listener-trait` command to add SetsTenantFromPayload trait to listener classes
 - `tables` config option to define tables that need tenant_id column
+- `listeners` config option to define listener classes that need SetsTenantFromPayload trait
 - `query_listener` config option to enable/disable and set log channel
 
 
