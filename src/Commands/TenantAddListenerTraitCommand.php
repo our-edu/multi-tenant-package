@@ -18,7 +18,7 @@ use Throwable;
  *
  * Artisan command to automatically add SetsTenantFromPayload trait to listener classes.
  * Listeners can be provided via:
- * - A config file path (e.g., sqs_events.php, EventServiceProvider-like files)
+ * - A config file name (e.g., sqs_events) - will look in config directory
  * - The 'listeners' config array in multi-tenant.php
  * - Direct class specification via --listener option
  */
