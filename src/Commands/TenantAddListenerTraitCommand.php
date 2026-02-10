@@ -160,6 +160,7 @@ class TenantAddListenerTraitCommand extends Command
     {
         if (! file_exists($configPath)) {
             $this->error("Config file not found: {$configPath}");
+
             return [];
         }
 
@@ -167,6 +168,7 @@ class TenantAddListenerTraitCommand extends Command
 
         if (! is_array($config)) {
             $this->error("Config file must return an array: {$configPath}");
+
             return [];
         }
 
@@ -186,7 +188,7 @@ class TenantAddListenerTraitCommand extends Command
             }
         }
 
-        $this->info("Found " . count($listeners) . " listener(s) in config file: {$configPath}");
+        $this->info('Found ' . count($listeners) . " listener(s) in config file: {$configPath}");
 
         return $listeners;
     }
@@ -320,4 +322,3 @@ class TenantAddListenerTraitCommand extends Command
         return $content;
     }
 }
-

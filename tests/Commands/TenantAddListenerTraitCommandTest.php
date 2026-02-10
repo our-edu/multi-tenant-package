@@ -105,4 +105,3 @@ class TenantAddListenerTraitCommandTest extends TestCase
         }
     }
 }
-
