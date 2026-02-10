@@ -115,18 +115,28 @@ This document summarizes all the test-related work completed for the multi-tenan
 ## 📊 Test Coverage
 
 ### Test Statistics
-- **Total Test Suites**: 5
-- **Total Test Methods**: 30+
-- **Test Files**: 6
-- **Lines of Test Code**: 600+
+- **Total Test Suites**: 12+
+- **Total Test Methods**: 131+
+- **Test Files**: 15+
+- **Lines of Test Code**: 2000+
 
 ### Components Tested
 - ✅ TenantContext - Tenant resolution and caching
 - ✅ TenantScope - Global query scoping
 - ✅ HasTenant Trait - Model integration
+- ✅ SetsTenantFromPayload Trait - Listener tenant resolution
 - ✅ TenantMiddleware - HTTP middleware
 - ✅ TenantResolver - Contract implementation
+- ✅ ChainTenantResolver - Chained resolution
+- ✅ UserSessionTenantResolver - Session-based resolution
+- ✅ DomainTenantResolver - Domain-based resolution
+- ✅ HeaderTenantResolver - Header-based resolution
 - ✅ TenantServiceProvider - Service registration
+- ✅ TenantQueryListener - Query monitoring
+- ✅ TenantMigrateCommand - Migration command
+- ✅ TenantAddTraitCommand - Model trait command
+- ✅ TenantAddListenerTraitCommand - Listener trait command
+- ✅ TenantNotResolvedException - Exception handling
 
 ---
 
@@ -171,17 +181,31 @@ multi-tenant-package/
 │   ├── .gitignore                    # Test artifacts
 │   ├── bootstrap.php                 # Test bootstrap
 │   ├── TestCase.php                  # Base test class
+│   ├── Commands/
+│   │   ├── TenantAddListenerTraitCommandTest.php
+│   │   ├── TenantAddTraitCommandTest.php
+│   │   └── TenantMigrateCommandTest.php
 │   ├── Tenancy/
-│   │   ├── TenantContextTest.php     # 10 tests
-│   │   └── TenantScopeTest.php       # 6 tests
+│   │   ├── TenantContextTest.php
+│   │   └── TenantScopeTest.php
 │   ├── Traits/
-│   │   └── HasTenantTest.php         # 6 tests
+│   │   ├── HasTenantTest.php
+│   │   └── SetsTenantFromPayloadTest.php
 │   ├── Middleware/
-│   │   └── TenantMiddlewareTest.php  # 3 tests
+│   │   └── TenantMiddlewareTest.php
+│   ├── Resolvers/
+│   │   ├── ChainTenantResolverTest.php
+│   │   ├── DomainTenantResolverTest.php
+│   │   ├── HeaderTenantResolverTest.php
+│   │   └── UserSessionTenantResolverTest.php
+│   ├── Listeners/
+│   │   └── TenantQueryListenerTest.php
+│   ├── Exceptions/
+│   │   └── TenantNotResolvedExceptionTest.php
 │   ├── Contracts/
-│   │   └── TenantResolverTest.php    # 4 tests
+│   │   └── TenantResolverTest.php
 │   └── Providers/
-│       └── TenantServiceProviderTest.php  # 3 tests
+│       └── TenantServiceProviderTest.php
 ├── .github/
 │   └── workflows/
 │       └── tests.yml                 # GitHub Actions CI/CD
