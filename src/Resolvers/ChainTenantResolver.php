@@ -16,20 +16,20 @@ use Ouredu\MultiTenant\Contracts\TenantResolver;
  *
  * Chains multiple tenant resolvers together, trying each one in order
  * until a tenant ID is resolved.
- *
- * Default order:
- * 1. UserSessionTenantResolver - Uses getSession() helper
- * 2. DomainTenantResolver - Uses request domain/subdomain
  */
 class ChainTenantResolver implements TenantResolver
 {
     /**
+     * List of tenant resolvers.
+     *
      * @var TenantResolver[]
      */
     private array $resolvers;
 
     /**
-     * @param TenantResolver[] $resolvers
+     * Constructor.
+     *
+     * @param TenantResolver[] $resolvers List of resolvers to chain.
      */
     public function __construct(array $resolvers = [])
     {
@@ -38,6 +38,8 @@ class ChainTenantResolver implements TenantResolver
 
     /**
      * Resolve the current tenant ID by trying each resolver in order.
+     *
+     * @return int|null The resolved tenant ID, or null if none found.
      */
     public function resolveTenantId(): ?int
     {
@@ -60,8 +62,8 @@ class ChainTenantResolver implements TenantResolver
     protected function getDefaultResolvers(): array
     {
         return [
-            new UserSessionTenantResolver(),
-            new DomainTenantResolver(),
+            new UserSessionTenantResolver(), // Check UserSessionTenantResolver first
+            new HeaderTenantResolver(),     // Then check HeaderTenantResolver
         ];
     }
 }
