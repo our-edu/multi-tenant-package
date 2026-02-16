@@ -167,11 +167,21 @@ class TenantQueryListener
     }
 
     /**
-     * Check if SELECT query has tenant_id in WHERE clause.
+     * Check if SELECT query has tenant_id in WHERE clause or is by primary key.
      */
     protected function selectHasTenantFilter(string $sql, string $tenantColumn): bool
     {
-        return $this->hasWhereWithTenantColumn($sql, $tenantColumn);
+        // First check if WHERE clause contains tenant_id
+        if ($this->hasWhereWithTenantColumn($sql, $tenantColumn)) {
+            return true;
+        }
+
+        // SELECT by primary key is safe (e.g., exists:table,uuid validation)
+        if ($this->isOperationByPrimaryKey($sql, 'select')) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -268,6 +278,7 @@ class TenantQueryListener
             $quotedPk = preg_quote($pk, '/');
 
             $pattern = match ($operation) {
+                'select' => '/\bwhere\s+[`"\']?' . $quotedPk . '[`"\']?\s*=\s*\?/i',
                 'update' => '/\bupdate\b.+?\bwhere\s+[`"\']?' . $quotedPk . '[`"\']?\s*=\s*\?/i',
                 'delete' => '/\bdelete\b.+?\bwhere\s+[`"\']?' . $quotedPk . '[`"\']?\s*=\s*\?/i',
                 default => null,
