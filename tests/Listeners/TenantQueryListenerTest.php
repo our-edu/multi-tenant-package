@@ -390,6 +390,60 @@ class TenantQueryListenerTest extends TestCase
         $this->assertFalse($testListener->logCalled);
     }
 
+    public function testSelectByPrimaryKeyDoesNotLogError(): void
+    {
+        config(['multi-tenant.query_listener.enabled' => true]);
+        config(['multi-tenant.tables' => ['branches' => 'App\\Models\\Branch']]);
+        config(['multi-tenant.tenant_column' => 'tenant_id']);
+        config(['multi-tenant.query_listener.primary_keys' => ['id', 'uuid']]);
+
+        $context = Mockery::mock(TenantContext::class);
+        $context->shouldReceive('hasTenant')->andReturn(true);
+
+        $testListener = new class ($context) extends TenantQueryListener {
+            public bool $logCalled = false;
+
+            protected function logMissingTenantFilter(string $sql, string $table, string $operation, QueryExecuted $event): void
+            {
+                $this->logCalled = true;
+            }
+        };
+
+        // SELECT by primary key should NOT log error (e.g., exists:branches,uuid validation)
+        $event = $this->createQueryEvent('SELECT count(*) as aggregate FROM branches WHERE uuid = ?');
+
+        $testListener->handle($event);
+
+        $this->assertFalse($testListener->logCalled);
+    }
+
+    public function testSelectByIdPrimaryKeyDoesNotLogError(): void
+    {
+        config(['multi-tenant.query_listener.enabled' => true]);
+        config(['multi-tenant.tables' => ['users' => 'App\\Models\\User']]);
+        config(['multi-tenant.tenant_column' => 'tenant_id']);
+        config(['multi-tenant.query_listener.primary_keys' => ['id', 'uuid']]);
+
+        $context = Mockery::mock(TenantContext::class);
+        $context->shouldReceive('hasTenant')->andReturn(true);
+
+        $testListener = new class ($context) extends TenantQueryListener {
+            public bool $logCalled = false;
+
+            protected function logMissingTenantFilter(string $sql, string $table, string $operation, QueryExecuted $event): void
+            {
+                $this->logCalled = true;
+            }
+        };
+
+        // SELECT by id should NOT log error
+        $event = $this->createQueryEvent('SELECT * FROM users WHERE id = ?');
+
+        $testListener->handle($event);
+
+        $this->assertFalse($testListener->logCalled);
+    }
+
     public function testInsertWithoutTenantIdLogsError(): void
     {
         config(['multi-tenant.query_listener.enabled' => true]);
