@@ -475,6 +475,197 @@ class TenantQueryListenerTest extends TestCase
         $this->assertEquals('insert', $testListener->logOperation);
     }
 
+    public function testSelectByPrimaryKeyWithTablePrefixDoesNotLogError(): void
+    {
+        config(['multi-tenant.query_listener.enabled' => true]);
+        config(['multi-tenant.tables' => ['branches' => 'App\\Models\\Branch']]);
+        config(['multi-tenant.tenant_column' => 'tenant_id']);
+        config(['multi-tenant.query_listener.primary_keys' => ['id', 'uuid']]);
+
+        $context = Mockery::mock(TenantContext::class);
+        $context->shouldReceive('hasTenant')->andReturn(true);
+
+        $testListener = new class ($context) extends TenantQueryListener {
+            public bool $logCalled = false;
+
+            protected function logMissingTenantFilter(string $sql, string $table, string $operation, QueryExecuted $event): void
+            {
+                $this->logCalled = true;
+            }
+        };
+
+        // SELECT by primary key with table prefix should NOT log error
+        $event = $this->createQueryEvent('SELECT * FROM "branches" WHERE "branches"."uuid" = ?');
+
+        $testListener->handle($event);
+
+        $this->assertFalse($testListener->logCalled);
+    }
+
+    public function testSelectByPrimaryKeyWithInOperatorDoesNotLogError(): void
+    {
+        config(['multi-tenant.query_listener.enabled' => true]);
+        config(['multi-tenant.tables' => ['branches' => 'App\\Models\\Branch']]);
+        config(['multi-tenant.tenant_column' => 'tenant_id']);
+        config(['multi-tenant.query_listener.primary_keys' => ['id', 'uuid']]);
+
+        $context = Mockery::mock(TenantContext::class);
+        $context->shouldReceive('hasTenant')->andReturn(true);
+
+        $testListener = new class ($context) extends TenantQueryListener {
+            public bool $logCalled = false;
+
+            protected function logMissingTenantFilter(string $sql, string $table, string $operation, QueryExecuted $event): void
+            {
+                $this->logCalled = true;
+            }
+        };
+
+        // SELECT by primary key with IN operator should NOT log error
+        $event = $this->createQueryEvent('SELECT * FROM "branches" WHERE "branches"."uuid" IN (?) AND "branches"."deleted_at" IS NULL');
+
+        $testListener->handle($event);
+
+        $this->assertFalse($testListener->logCalled);
+    }
+
+    public function testSelectByPrimaryKeyWithInOperatorMultipleValuesDoesNotLogError(): void
+    {
+        config(['multi-tenant.query_listener.enabled' => true]);
+        config(['multi-tenant.tables' => ['branches' => 'App\\Models\\Branch']]);
+        config(['multi-tenant.tenant_column' => 'tenant_id']);
+        config(['multi-tenant.query_listener.primary_keys' => ['id', 'uuid']]);
+
+        $context = Mockery::mock(TenantContext::class);
+        $context->shouldReceive('hasTenant')->andReturn(true);
+
+        $testListener = new class ($context) extends TenantQueryListener {
+            public bool $logCalled = false;
+
+            protected function logMissingTenantFilter(string $sql, string $table, string $operation, QueryExecuted $event): void
+            {
+                $this->logCalled = true;
+            }
+        };
+
+        // SELECT by primary key with IN operator with multiple values should NOT log error
+        $event = $this->createQueryEvent('SELECT * FROM "branches" WHERE "uuid" IN (?, ?, ?)');
+
+        $testListener->handle($event);
+
+        $this->assertFalse($testListener->logCalled);
+    }
+
+    public function testUpdateByPrimaryKeyWithTablePrefixDoesNotLogError(): void
+    {
+        config(['multi-tenant.query_listener.enabled' => true]);
+        config(['multi-tenant.tables' => ['users' => 'App\\Models\\User']]);
+        config(['multi-tenant.tenant_column' => 'tenant_id']);
+        config(['multi-tenant.query_listener.primary_keys' => ['id', 'uuid']]);
+
+        $context = Mockery::mock(TenantContext::class);
+        $context->shouldReceive('hasTenant')->andReturn(true);
+
+        $testListener = new class ($context) extends TenantQueryListener {
+            public bool $logCalled = false;
+
+            protected function logMissingTenantFilter(string $sql, string $table, string $operation, QueryExecuted $event): void
+            {
+                $this->logCalled = true;
+            }
+        };
+
+        // UPDATE by primary key with table prefix should NOT log error
+        $event = $this->createQueryEvent('UPDATE "users" SET status = ? WHERE "users"."id" = ?');
+
+        $testListener->handle($event);
+
+        $this->assertFalse($testListener->logCalled);
+    }
+
+    public function testDeleteByPrimaryKeyWithInOperatorDoesNotLogError(): void
+    {
+        config(['multi-tenant.query_listener.enabled' => true]);
+        config(['multi-tenant.tables' => ['users' => 'App\\Models\\User']]);
+        config(['multi-tenant.tenant_column' => 'tenant_id']);
+        config(['multi-tenant.query_listener.primary_keys' => ['id', 'uuid']]);
+
+        $context = Mockery::mock(TenantContext::class);
+        $context->shouldReceive('hasTenant')->andReturn(true);
+
+        $testListener = new class ($context) extends TenantQueryListener {
+            public bool $logCalled = false;
+
+            protected function logMissingTenantFilter(string $sql, string $table, string $operation, QueryExecuted $event): void
+            {
+                $this->logCalled = true;
+            }
+        };
+
+        // DELETE by primary key with IN operator should NOT log error
+        $event = $this->createQueryEvent('DELETE FROM users WHERE id IN (?, ?, ?)');
+
+        $testListener->handle($event);
+
+        $this->assertFalse($testListener->logCalled);
+    }
+
+    public function testSelectByPrimaryKeyWithTablePrefixNotInConfigLogsError(): void
+    {
+        config(['multi-tenant.query_listener.enabled' => true]);
+        // Only 'branches' is in config, not 'classes'
+        config(['multi-tenant.tables' => ['branches' => 'App\\Models\\Branch', 'classes' => 'App\\Models\\ClassModel']]);
+        config(['multi-tenant.tenant_column' => 'tenant_id']);
+        config(['multi-tenant.query_listener.primary_keys' => ['id', 'uuid']]);
+
+        $context = Mockery::mock(TenantContext::class);
+        $context->shouldReceive('hasTenant')->andReturn(true);
+
+        $testListener = new class ($context) extends TenantQueryListener {
+            public bool $logCalled = false;
+
+            protected function logMissingTenantFilter(string $sql, string $table, string $operation, QueryExecuted $event): void
+            {
+                $this->logCalled = true;
+            }
+        };
+
+        // SELECT with table prefix "other_table" which is NOT in config should log error
+        // because "other_table" is not in the config tables, so it's not a valid primary key query
+        $event = $this->createQueryEvent('SELECT * FROM "classes" WHERE "other_table"."uuid" IN (?)');
+
+        $testListener->handle($event);
+
+        $this->assertTrue($testListener->logCalled);
+    }
+
+    public function testSelectByPrimaryKeyWithConfigTablePrefixDoesNotLogError(): void
+    {
+        config(['multi-tenant.query_listener.enabled' => true]);
+        config(['multi-tenant.tables' => ['branches' => 'App\\Models\\Branch', 'classes' => 'App\\Models\\ClassModel']]);
+        config(['multi-tenant.tenant_column' => 'tenant_id']);
+        config(['multi-tenant.query_listener.primary_keys' => ['id', 'uuid']]);
+
+        $context = Mockery::mock(TenantContext::class);
+        $context->shouldReceive('hasTenant')->andReturn(true);
+
+        $testListener = new class ($context) extends TenantQueryListener {
+            public bool $logCalled = false;
+
+            protected function logMissingTenantFilter(string $sql, string $table, string $operation, QueryExecuted $event): void
+            {
+                $this->logCalled = true;
+            }
+        };
+
+        // SELECT with table prefix "branches" which IS in config should NOT log error
+        $event = $this->createQueryEvent('SELECT * FROM "classes" WHERE "branches"."uuid" IN (?)');
+
+        $testListener->handle($event);
+
+        $this->assertFalse($testListener->logCalled);
+    }
+
     /**
      * Create a QueryExecuted event.
      */
