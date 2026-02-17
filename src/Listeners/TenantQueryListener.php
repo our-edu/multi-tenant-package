@@ -273,14 +273,39 @@ class TenantQueryListener
     protected function isOperationByPrimaryKey(string $sql, string $operation): bool
     {
         $primaryKeys = $this->getPrimaryKeyColumns();
+        $configTables = array_keys($this->getTenantTablesConfig());
 
         foreach ($primaryKeys as $pk) {
             $quotedPk = preg_quote($pk, '/');
 
+            // Pattern to match = ? or IN (?)
+            $operatorPattern = '(?:\s*=\s*\?|\s+in\s*\([^)]*\))';
+
+            // First, check for primary key with table prefix (e.g., branches.uuid, "branches"."uuid")
+            // Only allow if the table is in the config tables
+            foreach ($configTables as $table) {
+                $quotedTable = preg_quote($table, '/');
+                $pkColumnWithTablePattern = '[`"\']?' . $quotedTable . '[`"\']?\.[`"\']?' . $quotedPk . '[`"\']?';
+
+                $pattern = match ($operation) {
+                    'select' => '/\bwhere\s+' . $pkColumnWithTablePattern . $operatorPattern . '/i',
+                    'update' => '/\bupdate\b.+?\bwhere\s+' . $pkColumnWithTablePattern . $operatorPattern . '/i',
+                    'delete' => '/\bdelete\b.+?\bwhere\s+' . $pkColumnWithTablePattern . $operatorPattern . '/i',
+                    default => null,
+                };
+
+                if ($pattern && preg_match($pattern, $sql)) {
+                    return true;
+                }
+            }
+
+            // Then, check for primary key without table prefix (e.g., uuid, "uuid")
+            $pkColumnPattern = '[`"\']?' . $quotedPk . '[`"\']?';
+
             $pattern = match ($operation) {
-                'select' => '/\bwhere\s+[`"\']?' . $quotedPk . '[`"\']?\s*=\s*\?/i',
-                'update' => '/\bupdate\b.+?\bwhere\s+[`"\']?' . $quotedPk . '[`"\']?\s*=\s*\?/i',
-                'delete' => '/\bdelete\b.+?\bwhere\s+[`"\']?' . $quotedPk . '[`"\']?\s*=\s*\?/i',
+                'select' => '/\bwhere\s+' . $pkColumnPattern . $operatorPattern . '/i',
+                'update' => '/\bupdate\b.+?\bwhere\s+' . $pkColumnPattern . $operatorPattern . '/i',
+                'delete' => '/\bdelete\b.+?\bwhere\s+' . $pkColumnPattern . $operatorPattern . '/i',
                 default => null,
             };
 
