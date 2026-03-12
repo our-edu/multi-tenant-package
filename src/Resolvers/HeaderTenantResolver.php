@@ -45,10 +45,10 @@ class HeaderTenantResolver implements TenantResolver
             return null;
         }
 
-//        // Check if current route is in the allowed routes list
-//        if (! $this->isRouteAllowed($request)) {
-//            return null;
-//        }
+        //        // Check if current route is in the allowed routes list
+        //        if (! $this->isRouteAllowed($request)) {
+        //            return null;
+        //        }
 
         return $this->getTenantIdFromHeader($request);
     }
