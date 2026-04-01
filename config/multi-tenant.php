@@ -109,6 +109,28 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Middleware Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for TenantMiddleware.
+    |
+    */
+    'middleware' => [
+        /*
+        |--------------------------------------------------------------------------
+        | Enable Middleware
+        |--------------------------------------------------------------------------
+        |
+        | When set to true, the TenantMiddleware will be registered as global
+        | middleware that runs on every request. Set to false to disable
+        | automatic tenant resolution via middleware.
+        |
+        */
+        'enabled' => env('MULTI_TENANT_MIDDLEWARE_ENABLED', true),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Excluded Routes
     |--------------------------------------------------------------------------
     |
