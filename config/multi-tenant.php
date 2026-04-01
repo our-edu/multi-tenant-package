@@ -127,18 +127,6 @@ return [
         |
         */
         'enabled' => env('MULTI_TENANT_MIDDLEWARE_ENABLED', true),
-
-        /*
-        |--------------------------------------------------------------------------
-        | Auto Register Middleware
-        |--------------------------------------------------------------------------
-        |
-        | When set to true, the TenantMiddleware will automatically be pushed
-        | to the configured middleware groups (web, api by default).
-        | When false, you need to manually apply the 'tenant' middleware to routes.
-        |
-        */
-        'auto_register' => env('MULTI_TENANT_MIDDLEWARE_AUTO_REGISTER', false),
     ],
 
     /*
