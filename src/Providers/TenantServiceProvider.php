@@ -10,7 +10,9 @@ declare(strict_types=1);
 namespace Ouredu\MultiTenant\Providers;
 
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Ouredu\MultiTenant\Commands\TenantAddListenerTraitCommand;
@@ -18,6 +20,7 @@ use Ouredu\MultiTenant\Commands\TenantAddTraitCommand;
 use Ouredu\MultiTenant\Commands\TenantMigrateCommand;
 use Ouredu\MultiTenant\Contracts\TenantResolver;
 use Ouredu\MultiTenant\Listeners\TenantQueryListener;
+use Ouredu\MultiTenant\Middleware\TenantMiddleware;
 use Ouredu\MultiTenant\Resolvers\ChainTenantResolver;
 use Ouredu\MultiTenant\Tenancy\TenantContext;
 
@@ -34,13 +37,29 @@ class TenantServiceProvider extends ServiceProvider
         $this->app->scoped(TenantContext::class, fn (Application $app): TenantContext => new TenantContext($app->make(TenantResolver::class)));
     }
 
-    public function boot(): void
+public function boot(): void
     {
         $this->registerPublishing();
         $this->registerCommands();
         $this->registerQueryListener();
         $this->registerTranslations();
+        $this->registerMiddleware();
     }
+
+    /**
+     * Register the tenant middleware.
+     */
+    protected function registerMiddleware(): void
+    {
+        if (config('multi-tenant.middleware.enabled', true)) {
+            /** @var \Illuminate\Foundation\Http\Kernel $kernel */
+            $kernel = $this->app->make(Kernel::class);
+
+            // Register as global middleware (high priority - runs early)
+            $kernel->prependMiddleware(TenantMiddleware::class);
+        }
+    }
+
 
     /**
      * Register the package's commands.
