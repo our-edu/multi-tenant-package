@@ -36,6 +36,7 @@ class TenantMiddlewareTest extends TestCase
     public function testMiddlewareThrowsExceptionWhenTenantNotResolved(): void
     {
         $request = Mockery::mock(Request::class);
+        $request->shouldReceive('isMethod')->with('OPTIONS')->andReturn(false);
         $next = function ($req) {
             return 'response';
         };
@@ -53,6 +54,7 @@ class TenantMiddlewareTest extends TestCase
     public function testMiddlewareCallsNextMiddlewareWhenTenantResolved(): void
     {
         $request = Mockery::mock(Request::class);
+        $request->shouldReceive('isMethod')->with('OPTIONS')->andReturn(false);
         $called = false;
 
         $next = function ($req) use (&$called) {
@@ -74,6 +76,7 @@ class TenantMiddlewareTest extends TestCase
     public function testMiddlewareLazyLoadsTenant(): void
     {
         $request = Mockery::mock(Request::class);
+        $request->shouldReceive('isMethod')->with('OPTIONS')->andReturn(false);
         $next = function ($req) {
             return 'response';
         };
@@ -86,6 +89,27 @@ class TenantMiddlewareTest extends TestCase
         $response = $this->middleware->handle($request, $next);
 
         $this->assertEquals('response', $response);
+    }
+
+    public function testMiddlewareSkipsResolutionForOptionsPreflightRequests(): void
+    {
+        $request = Mockery::mock(Request::class);
+        $request->shouldReceive('isMethod')->with('OPTIONS')->andReturn(true);
+        $called = false;
+
+        $next = function ($req) use (&$called) {
+            $called = true;
+
+            return 'cors_response';
+        };
+
+        // TenantContext should NOT be called for OPTIONS requests
+        $this->context->shouldNotReceive('getTenantId');
+
+        $response = $this->middleware->handle($request, $next);
+
+        $this->assertTrue($called);
+        $this->assertEquals('cors_response', $response);
     }
 
     public function testMiddlewareSkipsResolutionForExcludedRoutes(): void
