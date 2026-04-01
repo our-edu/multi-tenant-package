@@ -25,6 +25,11 @@ class TenantMiddleware
 {
     public function handle(Request $request, Closure $next): mixed
     {
+        // Skip tenant resolution for OPTIONS preflight requests (CORS)
+        if ($request->isMethod('OPTIONS')) {
+            return $next($request);
+        }
+
         // Skip tenant resolution for excluded routes
         if ($this->isRouteExcluded($request)) {
             return $next($request);
