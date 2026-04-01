@@ -12,7 +12,6 @@ namespace Ouredu\MultiTenant\Providers;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Database\Events\QueryExecuted;
-use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Ouredu\MultiTenant\Commands\TenantAddListenerTraitCommand;
@@ -37,7 +36,7 @@ class TenantServiceProvider extends ServiceProvider
         $this->app->scoped(TenantContext::class, fn (Application $app): TenantContext => new TenantContext($app->make(TenantResolver::class)));
     }
 
-public function boot(): void
+    public function boot(): void
     {
         $this->registerPublishing();
         $this->registerCommands();
@@ -59,7 +58,6 @@ public function boot(): void
             $kernel->prependMiddleware(TenantMiddleware::class);
         }
     }
-
 
     /**
      * Register the package's commands.
