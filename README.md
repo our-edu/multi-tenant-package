@@ -124,10 +124,11 @@ return [
     ],
     
     // Excluded routes (bypass tenant resolution in middleware)
+    // Use route names from `php artisan route:list`
     'excluded_routes' => [
-        // 'health',
-        // 'login',
-        // 'password/*',
+        // 'api.health',
+        // 'auth.login',
+        // 'api.ottu.gateway.webhook',
     ],
     
     // Domain configuration (for DomainTenantResolver)
@@ -279,15 +280,14 @@ Route::middleware('tenant')->group(function () {
 
 #### Excluded Routes
 
-Configure routes that should bypass tenant resolution:
+Configure routes that should bypass tenant resolution using route names (from `php artisan route:list`):
 
 ```php
 // config/multi-tenant.php
 'excluded_routes' => [
-    'health',           // Exact match
-    'api/health',       // Exact path
-    'password/*',       // Wildcard pattern
-    'auth.*',           // Route name pattern
+    'api.health',                  // Health check route
+    'auth.login',                  // Login route
+    'api.ottu.gateway.webhook',    // Payment webhook
 ],
 ```
 

@@ -61,43 +61,13 @@ class TenantMiddleware
 
         $currentRoute = $request->route();
 
-        // If route is not resolved yet, we can't check exclusions by name/uri
         if (! $currentRoute) {
             return false;
         }
 
         $routeName = $currentRoute->getName();
-        $routeUri = $currentRoute->uri();
 
-        foreach ($excludedRoutes as $route) {
-            if ($routeName && $this->matchesPattern($routeName, $route)) {
-                return true;
-            }
-
-            if ($this->matchesPattern($routeUri, $route)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Check if a value matches a pattern (supports wildcards).
-     */
-    protected function matchesPattern(string $value, string $pattern): bool
-    {
-        if ($value === $pattern) {
-            return true;
-        }
-
-        if (str_contains($pattern, '*')) {
-            $regex = '/^' . str_replace('\*', '.*', preg_quote($pattern, '/')) . '$/';
-
-            return (bool) preg_match($regex, $value);
-        }
-
-        return false;
+        return $routeName && in_array($routeName, $excludedRoutes, true);
     }
 
     /**

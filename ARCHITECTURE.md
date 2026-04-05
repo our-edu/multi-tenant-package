@@ -534,11 +534,11 @@ Route::middleware(['auth', 'tenant'])->group(function () {
 
 ```php
 // config/multi-tenant.php
+// Use route names from `php artisan route:list`
 'excluded_routes' => [
-    'health',           // Exact match
-    'api/health',       // Exact path
-    'password/*',       // Wildcard pattern
-    'auth.*',           // Route name pattern
+    'api.health',                  // Health check route
+    'auth.login',                  // Login route
+    'api.ottu.gateway.webhook',    // Payment webhook
 ],
 ```
 
