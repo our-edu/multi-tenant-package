@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace Tests\Middleware;
 
 use Illuminate\Http\Request;
+use Illuminate\Routing\Route;
 use Mockery;
 use Mockery\MockInterface;
 use Ouredu\MultiTenant\Exceptions\TenantNotResolvedException;
@@ -35,8 +36,13 @@ class TenantMiddlewareTest extends TestCase
 
     public function testMiddlewareThrowsExceptionWhenTenantNotResolved(): void
     {
+        $route = Mockery::mock(Route::class);
+        $route->shouldReceive('getName')->andReturn('dashboard');
+
         $request = Mockery::mock(Request::class);
         $request->shouldReceive('isMethod')->with('OPTIONS')->andReturn(false);
+        $request->shouldReceive('route')->andReturn($route);
+
         $next = function ($req) {
             return 'response';
         };
@@ -53,8 +59,13 @@ class TenantMiddlewareTest extends TestCase
 
     public function testMiddlewareCallsNextMiddlewareWhenTenantResolved(): void
     {
+        $route = Mockery::mock(Route::class);
+        $route->shouldReceive('getName')->andReturn('dashboard');
+
         $request = Mockery::mock(Request::class);
         $request->shouldReceive('isMethod')->with('OPTIONS')->andReturn(false);
+        $request->shouldReceive('route')->andReturn($route);
+
         $called = false;
 
         $next = function ($req) use (&$called) {
@@ -75,8 +86,13 @@ class TenantMiddlewareTest extends TestCase
 
     public function testMiddlewareLazyLoadsTenant(): void
     {
+        $route = Mockery::mock(Route::class);
+        $route->shouldReceive('getName')->andReturn('dashboard');
+
         $request = Mockery::mock(Request::class);
         $request->shouldReceive('isMethod')->with('OPTIONS')->andReturn(false);
+        $request->shouldReceive('route')->andReturn($route);
+
         $next = function ($req) {
             return 'response';
         };
@@ -112,11 +128,17 @@ class TenantMiddlewareTest extends TestCase
         $this->assertEquals('cors_response', $response);
     }
 
-    public function testMiddlewareSkipsResolutionForExcludedRoutes(): void
+    public function testMiddlewareSkipsResolutionForExcludedRoutesByName(): void
     {
-        config(['multi-tenant.excluded_routes' => ['health', 'login']]);
+        config(['multi-tenant.excluded_routes' => ['api.health', 'auth.login']]);
 
-        $request = Request::create('/health', 'GET');
+        $route = Mockery::mock(Route::class);
+        $route->shouldReceive('getName')->andReturn('api.health');
+
+        $request = Mockery::mock(Request::class);
+        $request->shouldReceive('isMethod')->with('OPTIONS')->andReturn(false);
+        $request->shouldReceive('route')->andReturn($route);
+
         $called = false;
 
         $next = function ($req) use (&$called) {
@@ -134,28 +156,16 @@ class TenantMiddlewareTest extends TestCase
         $this->assertEquals('response', $response);
     }
 
-    public function testMiddlewareSkipsResolutionForWildcardExcludedRoutes(): void
-    {
-        config(['multi-tenant.excluded_routes' => ['password/*']]);
-
-        $request = Request::create('/password/reset', 'GET');
-
-        $next = function ($req) {
-            return 'response';
-        };
-
-        $this->context->shouldNotReceive('getTenantId');
-
-        $response = $this->middleware->handle($request, $next);
-
-        $this->assertEquals('response', $response);
-    }
-
     public function testMiddlewareResolvesForNonExcludedRoutes(): void
     {
-        config(['multi-tenant.excluded_routes' => ['health']]);
+        config(['multi-tenant.excluded_routes' => ['api.health']]);
 
-        $request = Request::create('/dashboard', 'GET');
+        $route = Mockery::mock(Route::class);
+        $route->shouldReceive('getName')->andReturn('dashboard');
+
+        $request = Mockery::mock(Request::class);
+        $request->shouldReceive('isMethod')->with('OPTIONS')->andReturn(false);
+        $request->shouldReceive('route')->andReturn($route);
 
         $next = function ($req) {
             return 'response';
@@ -171,31 +181,51 @@ class TenantMiddlewareTest extends TestCase
         $this->assertEquals('response', $response);
     }
 
-    public function testMatchesPatternWithExactMatch(): void
+    public function testMiddlewareResolvesWhenRouteHasNoName(): void
     {
-        $middleware = new class () extends TenantMiddleware {
-            public function exposedMatchesPattern(string $value, string $pattern): bool
-            {
-                return $this->matchesPattern($value, $pattern);
-            }
+        config(['multi-tenant.excluded_routes' => ['api.health']]);
+
+        $route = Mockery::mock(Route::class);
+        $route->shouldReceive('getName')->andReturn(null);
+
+        $request = Mockery::mock(Request::class);
+        $request->shouldReceive('isMethod')->with('OPTIONS')->andReturn(false);
+        $request->shouldReceive('route')->andReturn($route);
+
+        $next = function ($req) {
+            return 'response';
         };
 
-        $this->assertTrue($middleware->exposedMatchesPattern('health', 'health'));
-        $this->assertFalse($middleware->exposedMatchesPattern('dashboard', 'health'));
+        $this->context
+            ->shouldReceive('getTenantId')
+            ->once()
+            ->andReturn(1);
+
+        $response = $this->middleware->handle($request, $next);
+
+        $this->assertEquals('response', $response);
     }
 
-    public function testMatchesPatternWithWildcard(): void
+    public function testMiddlewareResolvesWhenNoRouteResolved(): void
     {
-        $middleware = new class () extends TenantMiddleware {
-            public function exposedMatchesPattern(string $value, string $pattern): bool
-            {
-                return $this->matchesPattern($value, $pattern);
-            }
+        config(['multi-tenant.excluded_routes' => ['api.health']]);
+
+        $request = Mockery::mock(Request::class);
+        $request->shouldReceive('isMethod')->with('OPTIONS')->andReturn(false);
+        $request->shouldReceive('route')->andReturn(null);
+
+        $next = function ($req) {
+            return 'response';
         };
 
-        $this->assertTrue($middleware->exposedMatchesPattern('password/reset', 'password/*'));
-        $this->assertTrue($middleware->exposedMatchesPattern('password/forgot', 'password/*'));
-        $this->assertFalse($middleware->exposedMatchesPattern('user/password', 'password/*'));
+        $this->context
+            ->shouldReceive('getTenantId')
+            ->once()
+            ->andReturn(1);
+
+        $response = $this->middleware->handle($request, $next);
+
+        $this->assertEquals('response', $response);
     }
 
     public function testGetExcludedRoutesDefaultsToEmptyArray(): void
@@ -211,5 +241,28 @@ class TenantMiddlewareTest extends TestCase
         config(['multi-tenant.excluded_routes' => []]);
 
         $this->assertEquals([], $middleware->exposedGetExcludedRoutes());
+    }
+
+    public function testMiddlewareExcludesWebhookRouteByName(): void
+    {
+        config(['multi-tenant.excluded_routes' => ['api.ottu.gateway.webhook']]);
+
+        $route = Mockery::mock(Route::class);
+        $route->shouldReceive('getName')->andReturn('api.ottu.gateway.webhook');
+
+        $request = Mockery::mock(Request::class);
+        $request->shouldReceive('isMethod')->with('OPTIONS')->andReturn(false);
+        $request->shouldReceive('route')->andReturn($route);
+
+        $next = function ($req) {
+            return 'response';
+        };
+
+        // TenantContext should NOT be called for excluded routes
+        $this->context->shouldNotReceive('getTenantId');
+
+        $response = $this->middleware->handle($request, $next);
+
+        $this->assertEquals('response', $response);
     }
 }
