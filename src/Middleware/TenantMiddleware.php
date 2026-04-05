@@ -61,8 +61,9 @@ class TenantMiddleware
 
         $currentRoute = $request->route();
 
+        // If route is not resolved yet, we can't check exclusions by name/uri
         if (! $currentRoute) {
-            return $this->isPathExcluded($request->path(), $excludedRoutes);
+            return false;
         }
 
         $routeName = $currentRoute->getName();
@@ -74,20 +75,6 @@ class TenantMiddleware
             }
 
             if ($this->matchesPattern($routeUri, $route)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Check if the request path matches any of the excluded routes.
-     */
-    protected function isPathExcluded(string $path, array $excludedRoutes): bool
-    {
-        foreach ($excludedRoutes as $route) {
-            if ($this->matchesPattern($path, $route)) {
                 return true;
             }
         }
