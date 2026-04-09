@@ -124,11 +124,10 @@ return [
     ],
     
     // Excluded routes (bypass tenant resolution in middleware)
-    // Use route names from `php artisan route:list`
+    // Supports path patterns with wildcards (asterisk matches any segment)
     'excluded_routes' => [
-        // 'api.health',
-        // 'auth.login',
-        // 'api.ottu.gateway.webhook',
+        // API routes: 'api/*/*/health' matches api/v1/ar/health, api/v2/en/health
+        // Web routes: 'health' matches /health
     ],
     
     // Domain configuration (for DomainTenantResolver)
@@ -280,16 +279,28 @@ Route::middleware('tenant')->group(function () {
 
 #### Excluded Routes
 
-Configure routes that should bypass tenant resolution using route names (from `php artisan route:list`):
+Configure routes that should bypass tenant resolution using path patterns:
 
 ```php
 // config/multi-tenant.php
 'excluded_routes' => [
-    'api.health',                  // Health check route
-    'auth.login',                  // Login route
-    'api.ottu.gateway.webhook',    // Payment webhook
+    // API routes (with version/lang prefix) - use wildcards
+    'api/*/*/health',           // matches api/v1/ar/health, api/v2/en/health
+    'api/*/*/webhook/*',        // matches api/v1/ar/webhook/ottu, api/v2/en/webhook/stripe
+    'api/*/*/public/*',         // matches api/v1/ar/public/docs
+    
+    // Web routes (without prefix) - exact match
+    'health',                   // matches /health
+    'login',                    // matches /login
+    'register',                 // matches /register
 ],
 ```
+
+**Pattern Syntax:**
+- Use `*` (asterisk) as wildcard to match any single path segment
+- `api/*/*/users` matches `api/v1/ar/users`, `api/v2/en/users`, etc.
+- `webhook/*` matches `webhook/ottu`, `webhook/stripe`, etc.
+- Leading slashes are automatically trimmed
 
 #### Exception Handling
 

@@ -20,6 +20,8 @@ use Ouredu\MultiTenant\Tenancy\TenantContext;
  * Middleware that ensures the TenantContext is resolved early
  * in the request lifecycle. Supports excluded routes that bypass
  * tenant resolution entirely.
+ *
+ * Supports path patterns with wildcards (asterisk matches any single segment).
  */
 class TenantMiddleware
 {
@@ -59,15 +61,41 @@ class TenantMiddleware
             return false;
         }
 
-        $currentRoute = $request->route();
+        $currentPath = ltrim($request->path(), '/');
 
-        if (! $currentRoute) {
-            return false;
+        foreach ($excludedRoutes as $pattern) {
+            if ($this->pathMatchesPattern($currentPath, $pattern)) {
+                return true;
+            }
         }
 
-        $routeName = $currentRoute->getName();
+        return false;
+    }
 
-        return $routeName && in_array($routeName, $excludedRoutes, true);
+    /**
+     * Check if a path matches a pattern with wildcard support.
+     * Wildcards match any single path segment.
+     */
+    protected function pathMatchesPattern(string $path, string $pattern): bool
+    {
+        $pattern = ltrim($pattern, '/');
+
+        // Exact match
+        if ($path === $pattern) {
+            return true;
+        }
+
+        // Convert wildcard pattern to regex
+        // Escape special regex characters except asterisk
+        $regex = preg_quote($pattern, '#');
+
+        // Replace escaped asterisk with regex pattern to match any single segment
+        $regex = str_replace('\*', '[^/]+', $regex);
+
+        // Add anchors for full path match
+        $regex = '#^' . $regex . '$#';
+
+        return (bool) preg_match($regex, $path);
     }
 
     /**

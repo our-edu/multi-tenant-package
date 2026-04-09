@@ -138,18 +138,26 @@ return [
     | TenantMiddleware. Useful for public routes like health checks,
     | login pages, or webhooks that handle tenant resolution differently.
     |
-    | Use route names as shown in `php artisan route:list`.
+    | Supports path patterns with wildcards for matching any single segment.
+    | Use asterisk (*) as wildcard for any path segment.
     |
-    | Examples:
-    | - 'api.health' - matches route named 'api.health'
-    | - 'auth.login' - matches route named 'auth.login'
-    | - 'api.ottu.gateway.webhook' - matches webhook route
+    | For API routes (with version/lang prefix):
+    |   'api/{wild}/{wild}/users'     - matches api/v1/ar/users, api/v2/en/users
+    |   'api/{wild}/{wild}/health'    - matches api/v1/ar/health, api/v2/en/health
+    |   'api/{wild}/{wild}/webhook/{wild}' - matches api/v1/ar/webhook/ottu
+    |   (replace {wild} with actual asterisk in your config)
+    |
+    | For Web routes (without prefix):
+    |   'users'    - matches /users
+    |   'health'   - matches /health
+    |   'login'    - matches /login
     |
     */
     'excluded_routes' => [
-        // 'api.health',
-        // 'auth.login',
-        // 'api.ottu.gateway.webhook',
+        // 'api/*/*/health',
+        // 'api/*/*/webhook/*',
+        // 'health',
+        // 'login',
     ],
 
     /*
