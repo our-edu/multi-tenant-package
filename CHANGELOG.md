@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **BREAKING:** `excluded_routes` config now uses path patterns instead of route names
+  - For API routes: use `'api/*/*/health'` to match `api/v1/ar/health`, `api/v2/en/health`
+  - For Web routes: use `'health'` to match `/health`
+  - Wildcards (`*`) match any single path segment
 - **BREAKING:** `TenantResolver::resolveTenant()` changed to `resolveTenantId()` returning `?int` instead of `?Model`
 - **BREAKING:** `TenantContext` now stores `tenant_id` as `int` instead of tenant Model
 - **BREAKING:** Removed `getTenant()`, `setTenant()`, `setTenantById()` methods from TenantContext
