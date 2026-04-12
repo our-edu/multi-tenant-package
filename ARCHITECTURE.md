@@ -72,8 +72,8 @@ This package implements a **Shared Database, Shared Schema** pattern with **Row-
 │                                                                 │
 │  ┌─────────────────────────────────────────────────────────┐    │
 │  │         ChainTenantResolver (Default)                   │    │
-│  │   1. HeaderTenantResolver → X-Tenant-ID header          │    │
-│  │   2. UserSessionTenantResolver → getSession()->tenant_id│    │
+│  │   1. UserSessionTenantResolver → getSession()->tenant_id│    │
+│  │   2. HeaderTenantResolver → X-Tenant-ID header          │    │
 │  └─────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
                                 │
@@ -100,7 +100,7 @@ The package includes built-in resolvers and supports custom implementations:
 |----------|----------|---------|
 | **Header** | `HeaderTenantResolver` | `X-Tenant-ID` request header |
 | **Session** | `UserSessionTenantResolver` | `getSession()->tenant_id` |
-| **Chain** | `ChainTenantResolver` | Tries header, then session |
+| **Chain** | `ChainTenantResolver` | Tries session, then header |
 
 **ChainTenantResolver** - Chains multiple resolvers (default):
 ```php

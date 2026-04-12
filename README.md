@@ -44,7 +44,7 @@ The package will auto-register its service provider and automatically publish th
 
 The package uses `ChainTenantResolver` by default, which tries resolvers in order:
 1. `UserSessionTenantResolver` - Gets `tenant_id` from `getSession()` helper
-2. `DomainTenantResolver` - Gets `tenant_id` by querying tenant table by domain
+2. `HeaderTenantResolver` - Gets `tenant_id` from `X-Tenant-ID` header
 
 Configure the session helper in `config/multi-tenant.php`:
 ```php
