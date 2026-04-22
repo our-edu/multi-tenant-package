@@ -14,6 +14,7 @@ use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
+use Ouredu\MultiTenant\Commands\SetTenantIdCommand;
 use Ouredu\MultiTenant\Commands\TenantAddListenerTraitCommand;
 use Ouredu\MultiTenant\Commands\TenantAddTraitCommand;
 use Ouredu\MultiTenant\Commands\TenantMigrateCommand;
@@ -69,6 +70,7 @@ class TenantServiceProvider extends ServiceProvider
                 TenantMigrateCommand::class,
                 TenantAddTraitCommand::class,
                 TenantAddListenerTraitCommand::class,
+                SetTenantIdCommand::class,
             ]);
         }
     }
