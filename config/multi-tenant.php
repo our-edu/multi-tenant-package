@@ -131,6 +131,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Production App Prefix
+    |--------------------------------------------------------------------------
+    |
+    | Optional prefix to prepend to all excluded routes. Useful when your
+    | application runs behind a reverse proxy or has a production-specific
+    | URL prefix. Leave empty or null to disable.
+    |
+    | Example: 'api/v1' will transform excluded route 'health' to 'api/v1/health'
+    |
+    */
+    'production_app_prefix' => env('PRODUCTION_APP_PREFIX', null),
+
+    /*
+    |--------------------------------------------------------------------------
     | Excluded Routes
     |--------------------------------------------------------------------------
     |

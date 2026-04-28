@@ -371,4 +371,115 @@ class TenantMiddlewareTest extends TestCase
         $this->assertFalse($middleware->exposedPathMatchesPattern('api/v1/ar/dashboard', 'api/*/*/health'));
         $this->assertFalse($middleware->exposedPathMatchesPattern('dashboard', 'login'));
     }
+
+    public function testGetExcludedRoutesPrependsProductionAppPrefix(): void
+    {
+        config([
+            'multi-tenant.excluded_routes' => ['health', 'login'],
+            'multi-tenant.production_app_prefix' => 'api/v1',
+        ]);
+
+        $middleware = new class () extends TenantMiddleware {
+            public function exposedGetExcludedRoutes(): array
+            {
+                return $this->getExcludedRoutes();
+            }
+        };
+
+        $excludedRoutes = $middleware->exposedGetExcludedRoutes();
+
+        $this->assertEquals(['api/v1/health', 'api/v1/login'], $excludedRoutes);
+    }
+
+    public function testGetExcludedRoutesDoesNotPrependWhenPrefixIsEmpty(): void
+    {
+        config([
+            'multi-tenant.excluded_routes' => ['health', 'login'],
+            'multi-tenant.production_app_prefix' => null,
+        ]);
+
+        $middleware = new class () extends TenantMiddleware {
+            public function exposedGetExcludedRoutes(): array
+            {
+                return $this->getExcludedRoutes();
+            }
+        };
+
+        $excludedRoutes = $middleware->exposedGetExcludedRoutes();
+
+        $this->assertEquals(['health', 'login'], $excludedRoutes);
+    }
+
+    public function testGetExcludedRoutesTrimsSlashesFromPrefix(): void
+    {
+        config([
+            'multi-tenant.excluded_routes' => ['health', '/login'],
+            'multi-tenant.production_app_prefix' => '/api/v1/',
+        ]);
+
+        $middleware = new class () extends TenantMiddleware {
+            public function exposedGetExcludedRoutes(): array
+            {
+                return $this->getExcludedRoutes();
+            }
+        };
+
+        $excludedRoutes = $middleware->exposedGetExcludedRoutes();
+
+        $this->assertEquals(['api/v1/health', 'api/v1/login'], $excludedRoutes);
+    }
+
+    public function testMiddlewareExcludesRouteWithProductionAppPrefix(): void
+    {
+        config([
+            'multi-tenant.excluded_routes' => ['health'],
+            'multi-tenant.production_app_prefix' => 'api/v1',
+        ]);
+
+        $request = Mockery::mock(Request::class);
+        $request->shouldReceive('isMethod')->with('OPTIONS')->andReturn(false);
+        $request->shouldReceive('path')->andReturn('api/v1/health');
+
+        $called = false;
+
+        $next = function ($req) use (&$called) {
+            $called = true;
+
+            return 'response';
+        };
+
+        // TenantContext should NOT be called for excluded routes
+        $this->context->shouldNotReceive('getTenantId');
+
+        $response = $this->middleware->handle($request, $next);
+
+        $this->assertTrue($called);
+        $this->assertEquals('response', $response);
+    }
+
+    public function testMiddlewareDoesNotExcludeRouteWithoutProductionAppPrefix(): void
+    {
+        config([
+            'multi-tenant.excluded_routes' => ['health'],
+            'multi-tenant.production_app_prefix' => 'api/v1',
+        ]);
+
+        $request = Mockery::mock(Request::class);
+        $request->shouldReceive('isMethod')->with('OPTIONS')->andReturn(false);
+        $request->shouldReceive('path')->andReturn('health');
+
+        $next = function ($req) {
+            return 'response';
+        };
+
+        // TenantContext SHOULD be called since route doesn't match with prefix
+        $this->context
+            ->shouldReceive('getTenantId')
+            ->once()
+            ->andReturn(1);
+
+        $response = $this->middleware->handle($request, $next);
+
+        $this->assertEquals('response', $response);
+    }
 }

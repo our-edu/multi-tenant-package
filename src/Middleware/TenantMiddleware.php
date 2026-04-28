@@ -103,6 +103,17 @@ class TenantMiddleware
      */
     protected function getExcludedRoutes(): array
     {
-        return config('multi-tenant.excluded_routes', []);
+        $excludedRoutes = config('multi-tenant.excluded_routes', []);
+
+        $prefix = config('multi-tenant.production_app_prefix');
+
+        if (! empty($prefix) && ! empty($excludedRoutes)) {
+            $prefix = trim($prefix, '/');
+            $excludedRoutes = array_map(function ($route) use ($prefix) {
+                return $prefix . '/' . ltrim($route, '/');
+            }, $excludedRoutes);
+        }
+
+        return $excludedRoutes;
     }
 }

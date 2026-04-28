@@ -123,6 +123,9 @@ return [
         ],
     ],
     
+    // Production app prefix (prepended to excluded routes)
+    'production_app_prefix' => env('PRODUCTION_APP_PREFIX'),
+    
     // Excluded routes (bypass tenant resolution in middleware)
     // Supports path patterns with wildcards (asterisk matches any segment)
     'excluded_routes' => [
@@ -295,6 +298,27 @@ Configure routes that should bypass tenant resolution using path patterns:
     'register',                 // matches /register
 ],
 ```
+
+**Production App Prefix:**
+
+If your application runs behind a reverse proxy or has a production-specific URL prefix, you can configure it to be automatically prepended to all excluded routes:
+
+```php
+// config/multi-tenant.php
+'production_app_prefix' => env('PRODUCTION_APP_PREFIX'),
+
+'excluded_routes' => [
+    'health',
+    'login',
+],
+```
+
+```env
+# .env
+PRODUCTION_APP_PREFIX=api/v1
+```
+
+With this configuration, the excluded routes will become `api/v1/health` and `api/v1/login`.
 
 **Pattern Syntax:**
 - Use `*` (asterisk) as wildcard to match any single path segment

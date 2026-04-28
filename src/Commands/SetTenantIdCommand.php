@@ -41,7 +41,7 @@ class SetTenantIdCommand extends Command
         // Get active tenant from database
         $activeTenant = $tenantModel::query()->where('is_active', true)->first();
 
-        if (!$activeTenant) {
+        if (! $activeTenant) {
             $this->error('No active tenant found in tenants table.');
 
             return CommandAlias::FAILURE;
@@ -75,14 +75,14 @@ class SetTenantIdCommand extends Command
             }
 
             // Check if table exists
-            if (!Schema::hasTable($tableName)) {
+            if (! Schema::hasTable($tableName)) {
                 $this->warn("Table '{$tableName}' does not exist. Skipping...");
 
                 continue;
             }
 
             // Check if tenant column exists
-            if (!Schema::hasColumn($tableName, $tenantColumn)) {
+            if (! Schema::hasColumn($tableName, $tenantColumn)) {
                 $this->warn("Table '{$tableName}' does not have '{$tenantColumn}' column. Skipping...");
 
                 continue;
