@@ -107,7 +107,7 @@ class TenantMiddleware
 
         $prefix = config('multi-tenant.production_app_prefix');
 
-        if (!empty($prefix) && !empty($excludedRoutes)) {
+        if (! empty($prefix) && ! empty($excludedRoutes)) {
             $prefix = trim($prefix, '/');
             $excludedRoutes = array_map(function ($route) use ($prefix) {
                 return $prefix . '/' . ltrim($route, '/');
