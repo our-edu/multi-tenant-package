@@ -535,6 +535,10 @@ Route::middleware(['auth', 'tenant'])->group(function () {
 ```php
 // config/multi-tenant.php
 // Supports path patterns with wildcards (asterisk matches any segment)
+
+// Optional: prefix to prepend to all excluded routes
+'production_app_prefix' => env('PRODUCTION_APP_PREFIX'),
+
 'excluded_routes' => [
     // API routes (with version/lang prefix)
     'api/*/*/health',           // matches api/v1/ar/health, api/v2/en/health
@@ -545,6 +549,8 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     'login',                    // matches /login
 ],
 ```
+
+**Note:** If `PRODUCTION_APP_PREFIX` is set (e.g., `api/v1`), all excluded routes will be prefixed. For example, `health` becomes `api/v1/health`.
 
 **Implementation:**
 
