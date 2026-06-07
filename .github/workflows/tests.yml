@@ -77,15 +77,24 @@ jobs:
 
       - name: Install dependencies
         run: |
+          composer require \
+            --no-update \
+            --no-interaction \
+            "illuminate/support:${{ matrix.laravel }}" \
+            "illuminate/database:${{ matrix.laravel }}" \
+            "illuminate/http:${{ matrix.laravel }}"
+
+          composer require \
+            --dev \
+            --no-update \
+            --no-interaction \
+            "orchestra/testbench:${{ matrix.testbench }}"
+
           composer update \
             --prefer-dist \
             --no-interaction \
             --no-progress \
-            --with-all-dependencies \
-            "illuminate/support:${{ matrix.laravel }}" \
-            "illuminate/database:${{ matrix.laravel }}" \
-            "illuminate/http:${{ matrix.laravel }}" \
-            "orchestra/testbench:${{ matrix.testbench }}"
+            --with-all-dependencies
 
       - name: Run tests
         run: composer test
