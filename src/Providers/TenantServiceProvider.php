@@ -14,6 +14,8 @@ use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Validation\Factory as ValidationFactory;
+use Illuminate\Validation\PresenceVerifierInterface;
 use Ouredu\MultiTenant\Commands\SetTenantIdCommand;
 use Ouredu\MultiTenant\Commands\TenantAddListenerTraitCommand;
 use Ouredu\MultiTenant\Commands\TenantAddTraitCommand;
@@ -23,6 +25,7 @@ use Ouredu\MultiTenant\Listeners\TenantQueryListener;
 use Ouredu\MultiTenant\Middleware\TenantMiddleware;
 use Ouredu\MultiTenant\Resolvers\ChainTenantResolver;
 use Ouredu\MultiTenant\Tenancy\TenantContext;
+use Ouredu\MultiTenant\Validation\TenantDatabasePresenceVerifier;
 
 class TenantServiceProvider extends ServiceProvider
 {
@@ -42,6 +45,7 @@ class TenantServiceProvider extends ServiceProvider
         $this->registerPublishing();
         $this->registerCommands();
         $this->registerQueryListener();
+        $this->registerValidationPresenceVerifier();
         $this->registerTranslations();
         $this->registerMiddleware();
     }
@@ -105,6 +109,35 @@ class TenantServiceProvider extends ServiceProvider
         if (config('multi-tenant.query_listener.enabled', true)) {
             Event::listen(QueryExecuted::class, TenantQueryListener::class);
         }
+    }
+
+    /**
+     * Register tenant-aware database validation for exists/unique rules.
+     */
+    protected function registerValidationPresenceVerifier(): void
+    {
+        if (! class_exists(ValidationFactory::class)) {
+            return;
+        }
+
+        $this->app->booted(function (Application $app): void {
+            $presenceVerifier = new TenantDatabasePresenceVerifier(
+                $app->make('db'),
+                $app->make(TenantContext::class)
+            );
+
+            $app->instance('validation.presence', $presenceVerifier);
+
+            if (interface_exists(PresenceVerifierInterface::class)) {
+                $app->instance(PresenceVerifierInterface::class, $presenceVerifier);
+            }
+
+            if ($app->bound('validator')) {
+                /** @var ValidationFactory $validator */
+                $validator = $app->make('validator');
+                $validator->setPresenceVerifier($presenceVerifier);
+            }
+        });
     }
 
     /**

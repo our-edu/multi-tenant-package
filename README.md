@@ -3,7 +3,7 @@
 [![Packagist Version](https://img.shields.io/packagist/v/our-edu/multi-tenant.svg?style=flat-square)](https://packagist.org/packages/our-edu/multi-tenant)
 [![License](https://img.shields.io/packagist/l/our-edu/multi-tenant.svg?style=flat-square)](LICENSE)
 [![PHP Version](https://img.shields.io/packagist/php-v/our-edu/multi-tenant.svg?style=flat-square)](composer.json)
-[![Laravel Version](https://img.shields.io/badge/Laravel-9.x%20|%2010.x%20|%2011.x-red.svg?style=flat-square)](composer.json)
+[![Laravel Version](https://img.shields.io/badge/Laravel-10.x%20|%2011.x%20|%2012.x-red.svg?style=flat-square)](composer.json)
 
 A Laravel package for building multi-tenant applications. This package provides tenant context management, automatic query scoping, and model traits for seamless multi-tenancy support.
 
@@ -22,11 +22,12 @@ A Laravel package for building multi-tenant applications. This package provides 
 - **Queue Support** - Maintain tenant context in queued jobs
 - **Command Support** - Run commands for specific tenants
 - **Laravel Octane Compatible** - Uses scoped bindings for request isolation
+- **Validation Awareness** - `exists` and `unique` rules can auto-scope by tenant
 
 ## Requirements
 
-- PHP 8.1 or higher
-- Laravel 9.x, 10.x, or 11.x
+- PHP 8.2 or higher
+- Laravel 10.x, 11.x, or 12.x
 
 ## Installation
 
@@ -149,6 +150,11 @@ return [
         'enabled' => true,
         'log_channel' => null,  // null = default channel
     ],
+
+    // Validation scope for database rules (exists / unique)
+    'validation' => [
+        'apply_tenant_scope' => true,
+    ],
 ];
 ```
 
@@ -261,6 +267,35 @@ The trait provides:
 - Automatic tenant ID assignment on create/update
 - `tenant()` relationship method
 - `scopeForTenant($query, $tenantId)` scope
+
+### Validation Rules (`exists` / `unique`)
+
+Database-backed validation rules are tenant-aware by default when tenant context is available.
+
+```php
+use Illuminate\Support\Facades\Validator;
+
+app(\Ouredu\MultiTenant\Tenancy\TenantContext::class)->setTenantId(10);
+
+$validator = Validator::make($data, [
+    'email' => ['required', 'email', 'unique:users,email'],
+    'user_uuid' => ['required', 'exists:users,uuid'],
+]);
+```
+
+With this, checks are automatically scoped to the current tenant by adding
+`tenant_id = current_tenant_id` to the validation query.
+
+Scoped table names are taken from `multi-tenant.tables`, so you only configure
+the table list once.
+
+You can configure this behavior in `config/multi-tenant.php`:
+
+```php
+'validation' => [
+    'apply_tenant_scope' => true,
+],
+```
 
 ### Middleware
 

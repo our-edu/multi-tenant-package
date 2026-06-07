@@ -9,7 +9,10 @@ declare(strict_types=1);
 
 namespace Tests\Providers;
 
+use Illuminate\Validation\Factory as ValidationFactory;
+use Illuminate\Validation\PresenceVerifierInterface;
 use Ouredu\MultiTenant\Tenancy\TenantContext;
+use Ouredu\MultiTenant\Validation\TenantDatabasePresenceVerifier;
 use Tests\TestCase;
 
 class TenantServiceProviderTest extends TestCase
@@ -38,5 +41,16 @@ class TenantServiceProviderTest extends TestCase
         $context = $this->app->make(TenantContext::class);
 
         $this->assertInstanceOf(TenantContext::class, $context);
+    }
+
+    public function testProviderRegistersTenantAwareValidationPresenceVerifier(): void
+    {
+        /** @var ValidationFactory $validator */
+        $validator = $this->app->make('validator');
+
+        $this->assertInstanceOf(TenantDatabasePresenceVerifier::class, $validator->getPresenceVerifier());
+
+        $verifier = $this->app->make(PresenceVerifierInterface::class);
+        $this->assertInstanceOf(TenantDatabasePresenceVerifier::class, $verifier);
     }
 }
