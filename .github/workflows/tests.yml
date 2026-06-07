@@ -29,8 +29,27 @@ jobs:
 
     strategy:
       matrix:
-        php-version: [ '8.1', '8.2', '8.3' ]
-        laravel: [ '9.*', '10.*', '11.*' ]
+        include:
+          - php-version: '8.2'
+            laravel: '10.*'
+            testbench: '8.*'
+            coverage: false
+          - php-version: '8.2'
+            laravel: '11.*'
+            testbench: '9.*'
+            coverage: false
+          - php-version: '8.3'
+            laravel: '11.*'
+            testbench: '9.*'
+            coverage: false
+          - php-version: '8.3'
+            laravel: '12.*'
+            testbench: '10.*'
+            coverage: true
+          - php-version: '8.4'
+            laravel: '12.*'
+            testbench: '10.*'
+            coverage: false
 
     steps:
       - uses: actions/checkout@v4
@@ -40,7 +59,7 @@ jobs:
         with:
           php-version: ${{ matrix.php-version }}
           extensions: mbstring, intl, json
-          coverage: xdebug
+          coverage: ${{ matrix.coverage && 'xdebug' || 'none' }}
 
       - name: Validate composer.json
         run: composer validate
@@ -57,15 +76,26 @@ jobs:
           restore-keys: ${{ runner.os }}-composer-
 
       - name: Install dependencies
-        run: composer install --prefer-dist --no-progress
+        run: |
+          composer update \
+            --prefer-dist \
+            --no-interaction \
+            --no-progress \
+            --with-all-dependencies \
+            "illuminate/support:${{ matrix.laravel }}" \
+            "illuminate/database:${{ matrix.laravel }}" \
+            "illuminate/http:${{ matrix.laravel }}" \
+            "orchestra/testbench:${{ matrix.testbench }}"
 
       - name: Run tests
         run: composer test
 
       - name: Generate coverage report
+        if: matrix.coverage
         run: composer test:coverage
 
       - name: Upload coverage to Codecov
+        if: matrix.coverage
         uses: codecov/codecov-action@v3
         with:
           files: ./coverage/coverage.xml
