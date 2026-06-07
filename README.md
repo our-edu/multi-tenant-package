@@ -22,6 +22,7 @@ A Laravel package for building multi-tenant applications. This package provides 
 - **Queue Support** - Maintain tenant context in queued jobs
 - **Command Support** - Run commands for specific tenants
 - **Laravel Octane Compatible** - Uses scoped bindings for request isolation
+- **Validation Awareness** - `exists` and `unique` rules can auto-scope by tenant
 
 ## Requirements
 
@@ -149,6 +150,11 @@ return [
         'enabled' => true,
         'log_channel' => null,  // null = default channel
     ],
+
+    // Validation scope for database rules (exists / unique)
+    'validation' => [
+        'apply_tenant_scope' => true,
+    ],
 ];
 ```
 
@@ -261,6 +267,35 @@ The trait provides:
 - Automatic tenant ID assignment on create/update
 - `tenant()` relationship method
 - `scopeForTenant($query, $tenantId)` scope
+
+### Validation Rules (`exists` / `unique`)
+
+Database-backed validation rules are tenant-aware by default when tenant context is available.
+
+```php
+use Illuminate\Support\Facades\Validator;
+
+app(\Ouredu\MultiTenant\Tenancy\TenantContext::class)->setTenantId(10);
+
+$validator = Validator::make($data, [
+    'email' => ['required', 'email', 'unique:users,email'],
+    'user_uuid' => ['required', 'exists:users,uuid'],
+]);
+```
+
+With this, checks are automatically scoped to the current tenant by adding
+`tenant_id = current_tenant_id` to the validation query.
+
+Scoped table names are taken from `multi-tenant.tables`, so you only configure
+the table list once.
+
+You can configure this behavior in `config/multi-tenant.php`:
+
+```php
+'validation' => [
+    'apply_tenant_scope' => true,
+],
+```
 
 ### Middleware
 

@@ -302,4 +302,26 @@ return [
         */
         'primary_keys' => ['id', 'uuid'],
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validation
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for database-backed Laravel validation rules like
+    | `exists` and `unique`.
+    |
+    */
+    'validation' => [
+        /*
+        |--------------------------------------------------------------------------
+        | Apply Tenant Scope
+        |--------------------------------------------------------------------------
+        |
+        | When true, database validation checks automatically include tenant_id.
+        | Scoped tables are resolved from multi-tenant.tables by default.
+        |
+        */
+        'apply_tenant_scope' => env('MULTI_TENANT_VALIDATION_SCOPE', true),
+    ],
 ];

@@ -579,6 +579,39 @@ public function handle(Request $request, Closure $next): mixed
 
 ---
 
+### 6. TenantDatabasePresenceVerifier
+
+Tenant-aware validator presence verifier that scopes database validation rules to the current tenant.
+
+**Location:** `src/Validation/TenantDatabasePresenceVerifier.php`
+
+**What it affects:**
+- `exists` validation rules
+- `unique` validation rules
+
+**How it works:**
+1. Laravel validation calls the presence verifier for DB-backed rules.
+2. `TenantDatabasePresenceVerifier` intercepts `getCount()` and `getMultiCount()`.
+3. It appends `tenant_id = current_tenant_id` when tenant scoping is enabled.
+4. It scopes configured tables resolved from `multi-tenant.tables` keys.
+5. If a rule already has an explicit tenant condition, it does not duplicate it.
+
+**Config used:**
+
+```php
+// config/multi-tenant.php
+'validation' => [
+    'apply_tenant_scope' => true,
+],
+
+'tables' => [
+    'users' => \App\Models\User::class,
+    'orders' => \App\Models\Order::class,
+],
+```
+
+---
+
 ## Data Flow
 
 ### Web Request Flow
@@ -733,6 +766,8 @@ multi-tenant-package/
 │   ├── Tenancy/
 │   │   ├── TenantContext.php     # Central tenant service
 │   │   └── TenantScope.php       # Global query scope
+│   ├── Validation/
+│   │   └── TenantDatabasePresenceVerifier.php # Tenant-aware exists/unique
 │   └── Traits/
 │       ├── HasTenant.php         # Model trait
 │       └── SetsTenantFromPayload.php # Listener trait
@@ -989,6 +1024,16 @@ $this->app->bind(TenantResolver::class, ChainTenantResolver::class);
 
 ---
 
+### 6. Validation Rules
+
+| ✅ Do | ❌ Don't |
+|-------|----------|
+| Use standard `exists` / `unique` rules | Add manual tenant conditions in every rule |
+| Keep tenant table mapping in `multi-tenant.tables` | Duplicate table names in multiple config keys |
+| Ensure tenant context is set before validation | Run DB validation without tenant context |
+
+---
+
 ## Testing
 
 ### Unit Test Example
@@ -1133,10 +1178,15 @@ return [
     ],
     
     // Tables mapped to models
-    // Used by: tenant:migrate, tenant:add-trait, query listener
+    // Used by: tenant:migrate, tenant:add-trait, query listener, validation scoping
     'tables' => [
         // 'users' => \App\Models\User::class,
         // 'orders' => \App\Models\Order::class,
+    ],
+
+    // Validation behavior for DB-backed rules (exists/unique)
+    'validation' => [
+        'apply_tenant_scope' => true,
     ],
     
     // Listeners that need SetsTenantFromPayload trait
@@ -1177,6 +1227,7 @@ return [
 | `TenantAddTraitCommand` | Artisan command to add HasTenant trait to models |
 | `TenantAddListenerTraitCommand` | Artisan command to add SetsTenantFromPayload trait to listeners |
 | `TenantQueryListener` | Logs queries without tenant_id filter |
+| `TenantDatabasePresenceVerifier` | Scopes `exists`/`unique` checks by tenant |
 | `TenantNotFoundException` | Exception for missing tenant context |
 
 ### Resolver Registration Quick Reference
@@ -1190,6 +1241,6 @@ return [
 
 ---
 
-**Document Version:** 1.1  
-**Last Updated:** February 2026  
+**Document Version:** 1.2  
+**Last Updated:** June 2026  
 **Maintainer:** OurEdu Development Team
