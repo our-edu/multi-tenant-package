@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace Ouredu\MultiTenant\Validation;
 
+use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Database\ConnectionResolverInterface;
 use Illuminate\Validation\DatabasePresenceVerifier;
 use Ouredu\MultiTenant\Tenancy\TenantContext;
@@ -21,7 +22,7 @@ class TenantDatabasePresenceVerifier extends DatabasePresenceVerifier
 {
     public function __construct(
         ConnectionResolverInterface $db,
-        private readonly TenantContext $context
+        private readonly Application $app
     ) {
         parent::__construct($db);
     }
@@ -46,7 +47,9 @@ class TenantDatabasePresenceVerifier extends DatabasePresenceVerifier
      */
     protected function appendTenantCondition(string $table, array $extra): array
     {
-        $tenantId = $this->context->getTenantId();
+        /** @var TenantContext $context */
+        $context = $this->app->make(TenantContext::class);
+        $tenantId = $context->getTenantId();
 
         if (! $this->shouldScopeValidationToTenant($table, $tenantId)) {
             return $extra;
