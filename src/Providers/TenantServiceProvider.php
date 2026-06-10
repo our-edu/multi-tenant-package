@@ -123,7 +123,7 @@ class TenantServiceProvider extends ServiceProvider
         $this->app->booted(function (Application $app): void {
             $presenceVerifier = new TenantDatabasePresenceVerifier(
                 $app->make('db'),
-                $app->make(TenantContext::class)
+                $app
             );
 
             $app->instance('validation.presence', $presenceVerifier);
