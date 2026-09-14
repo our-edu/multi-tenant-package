@@ -612,6 +612,45 @@ Tenant-aware validator presence verifier that scopes database validation rules t
 
 ---
 
+### 7. Tenant Timezone
+
+Per-tenant (and per-branch) timezone resolution for the tenant-timezone rollout: instants are stored
+in `app.timezone` (UTC once a service has flipped), zones are IANA names, wall-clock values are never
+converted, and the wire always carries an offset.
+
+**Location:** `src/Timezone/TenantTimezone.php` (static API), `src/Timezone/TimezoneContext.php`
+(scoped state), `src/Casts/UtcDateTime.php`, `src/Traits/SerializesDatesAsIso.php`,
+`src/Commands/TimezoneCheckCommand.php`
+
+**Resolution order of `TenantTimezone::current()`:**
+1. The `timezone` attribute on the object returned by the session helper (the JWT claim minted by IAM).
+   Skipped in console, like `UserSessionTenantResolver`, so queue workers never touch the claims client.
+2. The tenant from `TenantContext` (set by jobs/listeners) plus the session branch, looked up in
+   `branches.timezone` then `tenants.timezone` (`TenantTimezone::for()`, memoized per request/job).
+3. `multi-tenant.timezone.default`, then `app.timezone`, then `UTC`.
+
+Every candidate is validated against `DateTimeZone::listIdentifiers()`; an invalid stored value
+(`+03:00`, `Etc/GMT-2`) falls through instead of being returned.
+
+**Octane / queues:** `TimezoneContext` is bound `scoped()`; the queue worker forgets scoped instances
+between jobs, so the memo never leaks across tenants.
+
+**Config used:**
+
+```php
+// config/multi-tenant.php
+'timezone' => [
+    'default' => null,                       // fallback zone (null → app.timezone)
+    'column' => 'timezone',
+    'tenants_table' => 'tenants',
+    'branches_table' => 'branches',
+    'session_attribute' => 'timezone',
+    'session_branch_attribute' => 'branch_uuid',
+],
+```
+
+---
+
 ## Data Flow
 
 ### Web Request Flow
@@ -744,10 +783,13 @@ multi-tenant-package/
 │   └── en/
 │       └── exceptions.php        # Translatable exception messages
 ├── src/
+│   ├── Casts/
+│   │   └── UtcDateTime.php       # Instant-column cast (tenant-zone parsing, storage-zone write)
 │   ├── Commands/
 │   │   ├── TenantAddListenerTraitCommand.php # Add SetsTenantFromPayload trait to listeners
 │   │   ├── TenantAddTraitCommand.php # Add HasTenant trait to models
-│   │   └── TenantMigrateCommand.php  # Add tenant_id to tables
+│   │   ├── TenantMigrateCommand.php  # Add tenant_id to tables
+│   │   └── TimezoneCheckCommand.php  # tenant:check-tzdata container guard
 │   ├── Contracts/
 │   │   └── TenantResolver.php    # Interface for tenant resolution
 │   ├── Exceptions/
@@ -766,10 +808,14 @@ multi-tenant-package/
 │   ├── Tenancy/
 │   │   ├── TenantContext.php     # Central tenant service
 │   │   └── TenantScope.php       # Global query scope
+│   ├── Timezone/
+│   │   ├── TenantTimezone.php    # Static timezone API (current/for/parse)
+│   │   └── TimezoneContext.php   # Scoped timezone state + DB lookup memo
 │   ├── Validation/
 │   │   └── TenantDatabasePresenceVerifier.php # Tenant-aware exists/unique
 │   └── Traits/
 │       ├── HasTenant.php         # Model trait
+│       ├── SerializesDatesAsIso.php  # serializeDate() → ISO-8601 with offset
 │       └── SetsTenantFromPayload.php # Listener trait
 ├── tests/
 │   └── ...
@@ -1228,6 +1274,11 @@ return [
 | `TenantAddListenerTraitCommand` | Artisan command to add SetsTenantFromPayload trait to listeners |
 | `TenantQueryListener` | Logs queries without tenant_id filter |
 | `TenantDatabasePresenceVerifier` | Scopes `exists`/`unique` checks by tenant |
+| `TenantTimezone` | Static tenant timezone API (`current`, `for`, `parse`, `isValid`) |
+| `TimezoneContext` | Scoped timezone state and memoized tenant/branch lookups |
+| `UtcDateTime` | Cast for instant columns (tenant-zone parsing, storage-zone write) |
+| `SerializesDatesAsIso` | Model trait serializing dates as ISO-8601 with offset |
+| `TimezoneCheckCommand` | `tenant:check-tzdata` — fails on stale tzdata / invalid stored zones |
 | `TenantNotFoundException` | Exception for missing tenant context |
 
 ### Resolver Registration Quick Reference
@@ -1241,6 +1292,6 @@ return [
 
 ---
 
-**Document Version:** 1.2  
-**Last Updated:** June 2026  
+**Document Version:** 1.3  
+**Last Updated:** September 2026  
 **Maintainer:** OurEdu Development Team

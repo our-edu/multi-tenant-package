@@ -41,6 +41,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Language files for exception messages (`lang/en/exceptions.php`)
 
 
+## [2.0.0] - 2026-09-14
+
+No breaking changes. The major version is a deliberate opt-in gate: services require `^1.0`/`^1.1` and
+build without a committed `composer.lock`, so a `1.x` tag would be pulled by every next image build.
+Each service adopts the timezone helpers by bumping its constraint to `^2.0` in its own PR.
+
+### Added
+- Tenant timezone support for the per-tenant timezone rollout (`Ouredu\MultiTenant\Timezone`)
+  - `TenantTimezone::current()` — session `timezone` claim → tenant/branch rows → `app.timezone`
+  - `TenantTimezone::for(?int $tenantId, ?string $branchUuid)` — database lookup for jobs and cron, memoized per request/job
+  - `TenantTimezone::parse()` — incoming instants; explicit offsets honoured, naive input read in the tenant zone
+  - `TenantTimezone::set()` / `runIn()` / `storage()` / `isValid()` and `TimezoneContext` (scoped)
+- `UtcDateTime` cast for instant columns (reads like `datetime`, writes through the storage zone, no object caching)
+- `SerializesDatesAsIso` model trait (`serializeDate()` → ISO-8601 with offset)
+- `inTenantTz()` Carbon macro on `Carbon` and `CarbonImmutable`
+- `tenant:check-tzdata` command — fails when the PHP tz database predates Egypt's 2023 DST; `--tenants` validates stored zones
+- `timezone` config block (`default`, `column`, `tenants_table`, `branches_table`, `session_attribute`, `session_branch_attribute`)
+- Explicit `nesbot/carbon` requirement (`^2.62|^3.0`)
+
+## [1.2.0] - 2026-06-10
+
+### Changed
+- `TenantDatabasePresenceVerifier` resolves `TenantContext` from the application per call instead of holding a scoped instance
+
+## [1.1.18] - 2026-06-07
+
+### Added
+- `TenantDatabasePresenceVerifier` — tenant-aware `exists` / `unique` validation rules (`validation.apply_tenant_scope`)
+
+### Changed
+- Requires PHP 8.2+ and Laravel 10, 11 or 12
+
 ## [1.0.0] - 2026-01-12
 
 ### Added
