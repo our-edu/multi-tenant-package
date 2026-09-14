@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace Ouredu\MultiTenant\Providers;
 
+use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Database\Events\QueryExecuted;
@@ -20,11 +22,14 @@ use Ouredu\MultiTenant\Commands\SetTenantIdCommand;
 use Ouredu\MultiTenant\Commands\TenantAddListenerTraitCommand;
 use Ouredu\MultiTenant\Commands\TenantAddTraitCommand;
 use Ouredu\MultiTenant\Commands\TenantMigrateCommand;
+use Ouredu\MultiTenant\Commands\TimezoneCheckCommand;
 use Ouredu\MultiTenant\Contracts\TenantResolver;
 use Ouredu\MultiTenant\Listeners\TenantQueryListener;
 use Ouredu\MultiTenant\Middleware\TenantMiddleware;
 use Ouredu\MultiTenant\Resolvers\ChainTenantResolver;
 use Ouredu\MultiTenant\Tenancy\TenantContext;
+use Ouredu\MultiTenant\Timezone\TenantTimezone;
+use Ouredu\MultiTenant\Timezone\TimezoneContext;
 use Ouredu\MultiTenant\Validation\TenantDatabasePresenceVerifier;
 
 class TenantServiceProvider extends ServiceProvider
@@ -38,6 +43,9 @@ class TenantServiceProvider extends ServiceProvider
 
         // Scoped binding for TenantContext
         $this->app->scoped(TenantContext::class, fn (Application $app): TenantContext => new TenantContext($app->make(TenantResolver::class)));
+
+        // Scoped binding for TimezoneContext (per request / per job, like TenantContext)
+        $this->app->scoped(TimezoneContext::class, fn (Application $app): TimezoneContext => new TimezoneContext($app));
     }
 
     public function boot(): void
@@ -48,6 +56,28 @@ class TenantServiceProvider extends ServiceProvider
         $this->registerValidationPresenceVerifier();
         $this->registerTranslations();
         $this->registerMiddleware();
+        $this->registerCarbonMacros();
+    }
+
+    /**
+     * Register the `inTenantTz()` Carbon macro on Carbon and CarbonImmutable.
+     *
+     * `now()->inTenantTz()` returns a copy in the current tenant zone;
+     * `->inTenantTz('Africa/Cairo')` in an explicit zone (jobs, cron).
+     * A plain closure is required: Carbon rebinds `$this` to the date instance.
+     */
+    protected function registerCarbonMacros(): void
+    {
+        $macro = function (?string $timezone = null) {
+            /** @var \Carbon\CarbonInterface $this */
+            return $this->copy()->setTimezone($timezone ?? TenantTimezone::current());
+        };
+
+        foreach ([Carbon::class, CarbonImmutable::class] as $class) {
+            if (! $class::hasMacro('inTenantTz')) {
+                $class::macro('inTenantTz', $macro);
+            }
+        }
     }
 
     /**
@@ -75,6 +105,7 @@ class TenantServiceProvider extends ServiceProvider
                 TenantAddTraitCommand::class,
                 TenantAddListenerTraitCommand::class,
                 SetTenantIdCommand::class,
+                TimezoneCheckCommand::class,
             ]);
         }
     }

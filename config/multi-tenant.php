@@ -324,4 +324,65 @@ return [
         */
         'apply_tenant_scope' => env('MULTI_TENANT_VALIDATION_SCOPE', true),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Tenant Timezone
+    |--------------------------------------------------------------------------
+    |
+    | Per-tenant (and per-branch) timezone resolution used by
+    | TenantTimezone::current() / ::for(), the UtcDateTime cast and the
+    | inTenantTz() Carbon macro.
+    |
+    | Zones are IANA names (Africa/Cairo), never offsets. Instants are stored
+    | in app.timezone; wall-clock values are never converted.
+    |
+    */
+    'timezone' => [
+        /*
+        |--------------------------------------------------------------------------
+        | Default Timezone
+        |--------------------------------------------------------------------------
+        |
+        | Used when no tenant/branch zone can be resolved. Leave null to fall
+        | back to app.timezone.
+        |
+        */
+        'default' => env('MULTI_TENANT_TIMEZONE_DEFAULT'),
+
+        /*
+        |--------------------------------------------------------------------------
+        | Timezone Column
+        |--------------------------------------------------------------------------
+        |
+        | The column holding the IANA zone on both the tenants and branches tables.
+        |
+        */
+        'column' => env('MULTI_TENANT_TIMEZONE_COLUMN', 'timezone'),
+
+        /*
+        |--------------------------------------------------------------------------
+        | Tables
+        |--------------------------------------------------------------------------
+        |
+        | The shared tenants table (int `id`) and branches table (`uuid`,
+        | tenant column, `deleted_at`) the zone is read from.
+        |
+        */
+        'tenants_table' => env('MULTI_TENANT_TENANTS_TABLE', 'tenants'),
+        'branches_table' => env('MULTI_TENANT_BRANCHES_TABLE', 'branches'),
+
+        /*
+        |--------------------------------------------------------------------------
+        | Session Attributes
+        |--------------------------------------------------------------------------
+        |
+        | Attributes read from the object returned by the session helper
+        | (multi-tenant.session.helper): the `timezone` claim minted by IAM and
+        | the current branch uuid (`*` means all branches → tenant zone).
+        |
+        */
+        'session_attribute' => env('MULTI_TENANT_SESSION_TIMEZONE_ATTRIBUTE', 'timezone'),
+        'session_branch_attribute' => env('MULTI_TENANT_SESSION_BRANCH_ATTRIBUTE', 'branch_uuid'),
+    ],
 ];

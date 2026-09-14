@@ -23,6 +23,7 @@ A Laravel package for building multi-tenant applications. This package provides 
 - **Command Support** - Run commands for specific tenants
 - **Laravel Octane Compatible** - Uses scoped bindings for request isolation
 - **Validation Awareness** - `exists` and `unique` rules can auto-scope by tenant
+- **Tenant Timezone** - Per-tenant/branch IANA zone from the JWT claim or the database, an instant cast, ISO-8601 serialization and a tzdata guard
 
 ## Requirements
 
@@ -509,6 +510,83 @@ class GenerateReports extends Command
 }
 ```
 
+### Tenant Timezone
+
+Every tenant (and optionally every branch) has an IANA timezone (`Africa/Cairo`, never an offset).
+IAM mints it into the JWT as a `timezone` claim and stores it in the shared `tenants.timezone` /
+`branches.timezone` columns. This package resolves it anywhere:
+
+```php
+use Ouredu\MultiTenant\Timezone\TenantTimezone;
+
+// HTTP request: the session's `timezone` claim, else the tenant/branch row, else app.timezone
+$zone = TenantTimezone::current();
+
+// Jobs, listeners, cron: resolve explicitly from ids (memoized per request/job)
+$zone = TenantTimezone::for($tenantId, $branchUuid);   // '*' or null branch → tenant zone
+
+// Render text (push/SMS bodies, PDFs, exports) in the tenant zone
+$text = $quiz->end_at->inTenantTz()->format('Y-m-d H:i');           // current tenant
+$text = $quiz->end_at->inTenantTz('Africa/Cairo')->format('H:i');   // explicit (jobs/cron)
+
+// Parse an incoming instant: an explicit offset is honoured, naive input is read in the tenant zone
+$startsAt = TenantTimezone::parse($request->input('starts_at'));
+```
+
+`current()` reads the session helper (`multi-tenant.session.helper`) for the `timezone` attribute,
+so each service must copy the claim onto its session object:
+
+```php
+// AppServiceProvider — where the UserSession is hydrated from /token/claims
+$userSession->timezone = $tokenClaims->timezone;
+```
+
+In console (queue workers, cron) the session is skipped, exactly like tenant resolution: `current()`
+then uses the tenant set on `TenantContext` (jobs that call `setTenantId()` / `SetsTenantFromPayload`).
+Cron code that iterates tenants must call `for()` per tenant.
+
+**Instant columns** (moments in time, stored as naive timestamps in `app.timezone`) use the
+`UtcDateTime` cast. Reading is identical to Laravel's `datetime` cast; writing converts to the storage
+zone first, so a Carbon assigned in another zone or a client string with an offset keeps its instant
+(Laravel's `datetime` cast silently drops the zone):
+
+```php
+use Ouredu\MultiTenant\Casts\UtcDateTime;
+
+protected $casts = [
+    'starts_at' => UtcDateTime::class,   // instant
+    'birthdate' => 'date:Y-m-d',         // wall-clock date: never converted, never ISO-serialized
+];
+```
+
+**Wall-clock values** (timetable `from`/`to`, `scheduled_time`, `HH:mm`, birthdates, academic-year
+bounds) are never converted: leave them as plain strings or `date:Y-m-d` / `datetime:H:i` casts.
+
+**Serialization**: add `SerializesDatesAsIso` to your base model so every date attribute goes out as
+ISO-8601 with an offset (`2026-09-13T07:00:00+00:00`), which is correct whatever the service's
+`app.timezone` is. Because Laravel routes plain `date` casts through the same serializer, date-only
+columns must use `date:Y-m-d` (see above).
+
+```php
+use Ouredu\MultiTenant\Traits\SerializesDatesAsIso;
+
+abstract class BaseModel extends Model
+{
+    use SerializesDatesAsIso;
+}
+```
+
+**Container guard**: PHP bundles its own timezone table, and builds older than 2023 do not know that
+Egypt reinstated daylight saving time. Run the check in every entrypoint *before* the process manager:
+
+```bash
+php artisan tenant:check-tzdata            # fails the container when tzdata is stale
+php artisan tenant:check-tzdata --tenants  # also validates every stored tenant/branch zone
+```
+
+Config (`multi-tenant.timezone.*`): `default` (fallback zone, null → `app.timezone`), `column`,
+`tenants_table`, `branches_table`, `session_attribute`, `session_branch_attribute`.
+
 ## API Reference
 
 ### TenantContext
@@ -528,6 +606,32 @@ class GenerateReports extends Command
 | `tenant(): BelongsTo` | Relationship to tenant model |
 | `scopeForTenant($query, int $id): Builder` | Scope to specific tenant |
 | `getTenantColumn(): string` | Get tenant column name (override) |
+
+### TenantTimezone
+
+| Method | Description |
+|--------|-------------|
+| `current(): string` | Zone of the current request's tenant/branch (session claim → tenant row → default) |
+| `for(?int $tenantId, ?string $branchUuid = null): string` | Zone of a tenant/branch from the database (memoized per request/job) |
+| `parse(mixed $value, ?string $timezone = null): ?Carbon` | Parse an incoming instant; naive input is read in the tenant zone; result in the storage zone |
+| `set(?string $timezone): void` | Override the current zone for the rest of the request/job |
+| `runIn(string $timezone, callable $callback): mixed` | Run callback with a specific current zone |
+| `storage(): string` | Zone naive database values are stored in (`app.timezone`) |
+| `isValid(mixed $timezone): bool` | Whether the value is an IANA zone name (offsets and `Etc/GMT±n` are rejected) |
+| `ALL_BRANCHES` | `'*'` — branch claim meaning "all branches" (use the tenant zone) |
+
+### Carbon Macro
+
+| Method | Description |
+|--------|-------------|
+| `$date->inTenantTz(?string $timezone = null): static` | Copy of the date in the current (or given) tenant zone |
+
+### UtcDateTime Cast / SerializesDatesAsIso Trait
+
+| Item | Description |
+|--------|-------------|
+| `UtcDateTime::class` | Cast for instant columns: reads like `datetime`, writes via `TenantTimezone::parse()` |
+| `SerializesDatesAsIso` | Model trait: `serializeDate()` → ISO-8601 with offset |
 
 ## Translations
 

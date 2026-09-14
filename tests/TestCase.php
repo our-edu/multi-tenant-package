@@ -31,6 +31,16 @@ abstract class TestCase extends OrchestraTestCase
     }
 
     /**
+     * Change the application timezone the way Laravel's bootstrap does:
+     * config value + PHP default zone (Eloquent reads naive dates in the latter).
+     */
+    protected function useAppTimezone(string $timezone): void
+    {
+        config()->set('app.timezone', $timezone);
+        date_default_timezone_set($timezone);
+    }
+
+    /**
      * Get package providers.
      */
     protected function getPackageProviders($app): array
