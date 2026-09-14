@@ -49,7 +49,7 @@
     },
     "scripts": {
         "test": "phpunit",
-        "test:coverage": "phpunit --coverage-html=coverage",
+        "test:coverage": "phpunit --coverage-clover=coverage/clover.xml --coverage-html=coverage/html",
         "lint": "php-cs-fixer fix --dry-run --diff",
         "lint:fix": "php-cs-fixer fix"
     },
