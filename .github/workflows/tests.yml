@@ -117,7 +117,10 @@ jobs:
             --with-all-dependencies
 
       - name: Show resolved versions
-        run: composer show laravel/framework orchestra/testbench nesbot/carbon phpunit/phpunit | grep -E '^(name|versions)'
+        run: |
+          for package in laravel/framework orchestra/testbench nesbot/carbon phpunit/phpunit; do
+            printf '%-22s %s\n' "$package" "$(composer show "$package" --format=json | php -r 'echo json_decode(stream_get_contents(STDIN))->versions[0];')"
+          done
 
       - name: Run tests
         if: ${{ !matrix.coverage }}
