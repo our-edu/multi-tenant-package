@@ -391,7 +391,7 @@ is fetched once per request (scoped bindings, Octane safe).
 use Ouredu\MultiTenant\Iam\ClaimsFailure;
 use Ouredu\MultiTenant\Iam\Facades\TokenClaims;
 
-$claims = token_claims()->requireClaims();  // TokenClaims, or throws 401 (token refused) / 503 (IAM down)
+$claims = token_claims()->requireClaims();  // TokenClaims, or throws IAM's 401 / 403 (token refused) / 503 (IAM down)
 token_claims()->optionalClaims();           // null only when the request has no token
 token_claims()->claims();                   // null on any failure; failure() says why (ClaimsFailure)
 
@@ -424,11 +424,14 @@ TokenClaims::fakeFailure(ClaimsFailure::Unavailable);
 TokenClaims::fakePermissions(['classrooms.index']);     // ['*'] allows everything
 ```
 
-| Case | Status | `title` |
+| Case | Status | Body |
 |---|---|---|
-| No token, IAM refused the token, incomplete claims | 401 | `invalid_session` |
+| IAM refused the token (its 401 / 403) | IAM's status | IAM's own JSON (e.g. `{"message": "Token is not active"}`), so clients can tell an expired token from a deactivated one; the standard error under IAM's status if IAM sent no JSON object |
+| No token, another IAM 4xx, claims without `user_uuid` / `role_name` | 401 | `invalid_session` |
 | IAM unreachable, timed out or 5xx (claims or permissions) | 503 | `session_service_unavailable` |
 | Guest, role / branch not allowed, permission denied | 403 | `unauthorized_action` |
+
+The standard errors use the body `{"errors":[{"status","title","detail"}]}`.
 
 #### Configuration
 
@@ -746,7 +749,7 @@ Config (`multi-tenant.timezone.*`): `default` (fallback zone, null → `app.time
 | Method | Description |
 |--------|-------------|
 | `claims(): ?TokenClaims` | The request's claims, or null on any failure (one IAM call per request) |
-| `requireClaims(): TokenClaims` | The claims, or throws the 401 (no token / refused) or 503 (IAM down) response |
+| `requireClaims(): TokenClaims` | The claims, or throws IAM's own 401 / 403 (refused), the standard 401 (no token / unusable claims) or 503 (IAM down) |
 | `optionalClaims(): ?TokenClaims` | Null only when the request has no token; otherwise like `requireClaims()` |
 | `failure(): ?ClaimsFailure` | Why `claims()` is null: `MissingToken`, `Rejected` or `Unavailable` |
 | `hasClaims(): bool` | Whether the claims resolved |

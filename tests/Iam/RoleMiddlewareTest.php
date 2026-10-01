@@ -99,6 +99,16 @@ class RoleMiddlewareTest extends IamTestCase
         $this->getWithToken('/students')->assertOk();
     }
 
+    public function test_iams_own_refusal_reaches_the_client(): void
+    {
+        Http::fake(['*' => Http::response(['message' => 'Token is not active'], 403)]);
+        $this->actingAsUser();
+
+        $this->getWithToken('/students')
+            ->assertStatus(403)
+            ->assertExactJson(['message' => 'Token is not active']);
+    }
+
     public function test_iam_refusing_the_token_gets_401(): void
     {
         Http::fake(['*' => Http::response([], 401)]);

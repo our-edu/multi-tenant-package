@@ -15,8 +15,9 @@ their local `TokenClaimSingleton`, `TokenClaimsResponse`, `AuthorizeSingleton`, 
 ### Added
 - IAM token claims and permissions (`Ouredu\MultiTenant\Iam`)
   - `TokenClaimsResolver` (scoped) — `claims()`, `requireClaims()`, `optionalClaims()`, `failure()`, `hasClaims()`;
-    one `/token/claims` call per request (a failure is cached too), 401 when IAM refuses the token or
-    returns claims without `user_uuid` / `role_name`, 503 when IAM is unreachable, times out or errors
+    one `/token/claims` call per request (a failure is cached too); IAM's own 401 / 403 status and body
+    when it refuses the token (the standard error under IAM's status if it sent no JSON object), 401 for
+    other 4xx answers or claims without `user_uuid` / `role_name`, 503 when IAM is unreachable, times out or errors
   - `ClaimsFailure` enum — `MissingToken`, `Rejected`, `Unavailable`
   - `TokenClaims` DTO — typed claims plus `raw()` for keys it does not type and `toArray()`
   - `PermissionAuthorizer` (scoped) and `iam_can()` — one `/authorize` call per permission per request;

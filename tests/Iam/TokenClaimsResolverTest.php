@@ -75,13 +75,79 @@ class TokenClaimsResolverTest extends IamTestCase
         $this->assertRejects(401, 'invalid_session');
     }
 
-    public function test_it_rejects_with_401_when_iam_refuses_the_token(): void
+    private function rejection(): \Symfony\Component\HttpFoundation\Response
     {
-        Http::fake(['*' => Http::response(['message' => 'revoked'], 401)]);
+        try {
+            $this->resolver()->requireClaims();
+            $this->fail('Expected requireClaims() to reject the request');
+        } catch (HttpResponseException $e) {
+            return $e->getResponse();
+        }
+    }
+
+    public function test_iams_own_401_is_passed_through_when_it_refuses_the_token(): void
+    {
+        Http::fake(['*' => Http::response(['message' => 'Token is not active'], 401)]);
+        $this->withBearer('token');
+
+        $response = $this->rejection();
+
+        $this->assertSame(401, $response->getStatusCode());
+        $this->assertSame(['message' => 'Token is not active'], $response->getData(true));
+        $this->assertSame(ClaimsFailure::Rejected, $this->resolver()->failure());
+    }
+
+    public function test_iams_own_403_is_passed_through(): void
+    {
+        Http::fake(['*' => Http::response(['message' => 'Forbidden'], 403)]);
+        $this->withBearer('token');
+
+        $response = $this->rejection();
+
+        $this->assertSame(403, $response->getStatusCode());
+        $this->assertSame(['message' => 'Forbidden'], $response->getData(true));
+    }
+
+    public function test_a_refusal_without_a_json_body_gets_the_standard_error_under_iams_status(): void
+    {
+        Http::fake(['*' => Http::sequence()->push('Forbidden', 403)->push('', 401)]);
+
+        $this->withBearer('first');
+        $forbidden = $this->rejection();
+        $this->assertSame(403, $forbidden->getStatusCode());
+        $this->assertSame('unauthorized_action', $forbidden->getData(true)['errors'][0]['title']);
+
+        $this->withBearer('second');
+        $unauthorized = $this->rejection();
+        $this->assertSame(401, $unauthorized->getStatusCode());
+        $this->assertSame('invalid_session', $unauthorized->getData(true)['errors'][0]['title']);
+    }
+
+    public function test_other_4xx_answers_get_the_standard_401(): void
+    {
+        Http::fake(['*' => Http::response(['message' => 'Token not provided'], 400)]);
         $this->withBearer('token');
 
         $this->assertRejects(401, 'invalid_session');
         $this->assertSame(ClaimsFailure::Rejected, $this->resolver()->failure());
+    }
+
+    public function test_the_passed_through_refusal_is_cached_for_the_request(): void
+    {
+        Http::fake(['*' => Http::response(['message' => 'Invalid token'], 401)]);
+        $this->withBearer('token');
+
+        $this->rejection();
+        $this->assertSame(['message' => 'Invalid token'], $this->rejection()->getData(true));
+
+        try {
+            $this->resolver()->optionalClaims();
+            $this->fail('Expected optionalClaims() to reject the request');
+        } catch (HttpResponseException $e) {
+            $this->assertSame(401, $e->getResponse()->getStatusCode());
+        }
+
+        Http::assertSentCount(1);
     }
 
     #[DataProvider('incompleteClaims')]
