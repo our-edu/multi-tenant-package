@@ -78,7 +78,7 @@ class TenantServiceProvider extends ServiceProvider
      */
     protected function registerIamMiddlewareAliases(): void
     {
-        if (!IamConfig::get('register_middleware_aliases')) {
+        if (! IamConfig::get('register_middleware_aliases')) {
             return;
         }
 
@@ -86,7 +86,7 @@ class TenantServiceProvider extends ServiceProvider
         $existing = $router->getMiddleware();
 
         foreach (['role' => RoleMiddleware::class, 'permission' => PermissionMiddleware::class] as $name => $class) {
-            if (!array_key_exists($name, $existing)) {
+            if (! array_key_exists($name, $existing)) {
                 $router->aliasMiddleware($name, $class);
             }
         }

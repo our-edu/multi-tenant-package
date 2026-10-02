@@ -398,7 +398,7 @@ return [
     */
     'iam' => [
         // Seconds to wait for IAM before treating it as unavailable (503)
-        'timeout' => (int)env('MULTI_TENANT_IAM_TIMEOUT', 10),
+        'timeout' => (int) env('MULTI_TENANT_IAM_TIMEOUT', 10),
 
         // Guard the role / permission middleware checks when a route passes none
         'guard' => null,

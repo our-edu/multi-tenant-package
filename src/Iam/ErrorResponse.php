@@ -49,7 +49,7 @@ final class ErrorResponse
     private static function message(string $key, array $replace = []): string
     {
         // Services reword these by overriding lang/vendor/multi-tenant/{locale}/iam.php
-        return (string)trans("multi-tenant::iam.$key", $replace);
+        return (string) trans("multi-tenant::iam.$key", $replace);
     }
 
     private static function make(int $status, string $title, string $detail): HttpResponseException
