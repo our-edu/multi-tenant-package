@@ -26,6 +26,7 @@
     },
     "require": {
         "php": "^8.2",
+        "guzzlehttp/guzzle": "^7.2",
         "illuminate/support": "^10.0|^11.0|^12.0",
         "illuminate/database": "^10.0|^11.0|^12.0",
         "illuminate/http": "^10.0|^11.0|^12.0",
@@ -40,7 +41,10 @@
     "autoload": {
         "psr-4": {
             "Ouredu\\MultiTenant\\": "src/"
-        }
+        },
+        "files": [
+            "src/Iam/helpers.php"
+        ]
     },
     "autoload-dev": {
         "psr-4": {

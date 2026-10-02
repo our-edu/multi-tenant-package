@@ -385,4 +385,30 @@ return [
         'session_attribute' => env('MULTI_TENANT_SESSION_TIMEZONE_ATTRIBUTE', 'timezone'),
         'session_branch_attribute' => env('MULTI_TENANT_SESSION_BRANCH_ATTRIBUTE', 'branch_uuid'),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | IAM Configuration
+    |--------------------------------------------------------------------------
+    |
+    | IAM token claims and permissions (Ouredu\MultiTenant\Iam): the
+    | TokenClaimsResolver, the role / permission middleware and the 401 / 403
+    | / 503 responses. Every key is optional; IamConfig holds the defaults.
+    |
+    */
+    'iam' => [
+        // Seconds to wait for IAM before treating it as unavailable (503)
+        'timeout' => (int) env('MULTI_TENANT_IAM_TIMEOUT', 10),
+
+        // Guard the role / permission middleware checks when a route passes none
+        'guard' => null,
+
+        // Register the `role` and `permission` middleware aliases. Only aliases the
+        // service has not defined in its HTTP Kernel are added; its own are kept.
+        'register_middleware_aliases' => env('MULTI_TENANT_IAM_MIDDLEWARE_ALIASES', false),
+
+        // Name the required permissions in the 403 detail; null follows
+        // config('permission.display_permission_in_exception')
+        'show_permissions_in_error' => null,
+    ],
 ];

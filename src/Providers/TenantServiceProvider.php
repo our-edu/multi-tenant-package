@@ -14,6 +14,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Factory as ValidationFactory;
@@ -24,6 +25,11 @@ use Ouredu\MultiTenant\Commands\TenantAddTraitCommand;
 use Ouredu\MultiTenant\Commands\TenantMigrateCommand;
 use Ouredu\MultiTenant\Commands\TimezoneCheckCommand;
 use Ouredu\MultiTenant\Contracts\TenantResolver;
+use Ouredu\MultiTenant\Iam\IamConfig;
+use Ouredu\MultiTenant\Iam\Middleware\PermissionMiddleware;
+use Ouredu\MultiTenant\Iam\Middleware\RoleMiddleware;
+use Ouredu\MultiTenant\Iam\PermissionAuthorizer;
+use Ouredu\MultiTenant\Iam\TokenClaimsResolver;
 use Ouredu\MultiTenant\Listeners\TenantQueryListener;
 use Ouredu\MultiTenant\Middleware\TenantMiddleware;
 use Ouredu\MultiTenant\Resolvers\ChainTenantResolver;
@@ -46,6 +52,10 @@ class TenantServiceProvider extends ServiceProvider
 
         // Scoped binding for TimezoneContext (per request / per job, like TenantContext)
         $this->app->scoped(TimezoneContext::class, fn (Application $app): TimezoneContext => new TimezoneContext($app));
+
+        // Scoped: one IAM call for the claims, and one per permission, per request (Octane safe)
+        $this->app->scoped(TokenClaimsResolver::class);
+        $this->app->scoped(PermissionAuthorizer::class);
     }
 
     public function boot(): void
@@ -56,7 +66,30 @@ class TenantServiceProvider extends ServiceProvider
         $this->registerValidationPresenceVerifier();
         $this->registerTranslations();
         $this->registerMiddleware();
+        $this->registerIamMiddlewareAliases();
         $this->registerCarbonMacros();
+    }
+
+    /**
+     * Register the `role` and `permission` middleware aliases, when opted in.
+     * Only aliases the service has not defined are added: the HTTP Kernel
+     * syncs its aliases before providers boot, and a later aliasMiddleware()
+     * call would silently replace the service's own middleware.
+     */
+    protected function registerIamMiddlewareAliases(): void
+    {
+        if (! IamConfig::get('register_middleware_aliases')) {
+            return;
+        }
+
+        $router = $this->app->make(Router::class);
+        $existing = $router->getMiddleware();
+
+        foreach (['role' => RoleMiddleware::class, 'permission' => PermissionMiddleware::class] as $name => $class) {
+            if (! array_key_exists($name, $existing)) {
+                $router->aliasMiddleware($name, $class);
+            }
+        }
     }
 
     /**
