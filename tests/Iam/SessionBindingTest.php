@@ -106,6 +106,16 @@ class SessionBindingTest extends IamTestCase
         $this->assertSame('student', token_claims()->claims()->role_name);
         Http::assertSentCount(1);
     }
+
+    public function test_a_new_fake_drops_the_session_built_before_it(): void
+    {
+        TokenClaims::fake(['user_uuid' => 'user-1']);
+        $this->assertSame('user-1', app(FakeUserSession::class)->user_uuid);
+
+        TokenClaims::fake(['user_uuid' => 'user-2']);
+
+        $this->assertSame('user-2', app(FakeUserSession::class)->user_uuid);
+    }
 }
 
 class FakeUserSession extends Model

@@ -28,6 +28,9 @@ use Ouredu\MultiTenant\Iam\TokenClaimsResolver;
  */
 class TokenClaims extends Facade
 {
+    /** @var class-string[] Session models bound with bindSession() */
+    private static array $sessionClasses = [];
+
     protected static function getFacadeAccessor(): string
     {
         return TokenClaimsResolver::class;
@@ -50,6 +53,8 @@ class TokenClaims extends Facade
      */
     public static function bindSession(string $sessionClass): void
     {
+        static::$sessionClasses[$sessionClass] = $sessionClass;
+
         static::$app->scoped($sessionClass, function ($app) use ($sessionClass) {
             $claims = $app->make(TokenClaimsResolver::class)->claims();
 
@@ -93,14 +98,19 @@ class TokenClaims extends Facade
     public static function fakePermissions(array $allowed): void
     {
         static::$app->scoped(PermissionAuthorizer::class, fn () => new FakePermissionAuthorizer($allowed));
-        static::$app->forgetScopedInstances();
+        static::$app->forgetInstance(PermissionAuthorizer::class);
     }
 
     private static function swapResolver(FakeTokenClaimsResolver $template): void
     {
         // A fresh copy per request scope, so each request resolves on its own
         static::$app->scoped(TokenClaimsResolver::class, fn () => clone $template);
-        // Drop sessions already built from the real resolver
-        static::$app->forgetScopedInstances();
+        static::$app->forgetInstance(TokenClaimsResolver::class);
+
+        // Drop sessions already built from the real resolver; other scoped
+        // state (e.g. a TenantContext the test set) is kept
+        foreach (static::$sessionClasses as $sessionClass) {
+            static::$app->forgetInstance($sessionClass);
+        }
     }
 }

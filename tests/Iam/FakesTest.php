@@ -13,6 +13,7 @@ use Illuminate\Auth\GenericUser;
 use Illuminate\Support\Facades\Http;
 use Ouredu\MultiTenant\Iam\ClaimsFailure;
 use Ouredu\MultiTenant\Iam\Facades\TokenClaims;
+use Ouredu\MultiTenant\Tenancy\TenantContext;
 
 class FakesTest extends IamTestCase
 {
@@ -74,5 +75,16 @@ class FakesTest extends IamTestCase
         TokenClaims::fakePermissions(['*']);
         $this->getJson('/classrooms')->assertOk();
         Http::assertNothingSent();
+    }
+
+    public function test_fakes_keep_the_tenant_the_test_set(): void
+    {
+        app(TenantContext::class)->setTenantId(7);
+
+        TokenClaims::fake();
+        TokenClaims::fakeFailure(ClaimsFailure::Unavailable);
+        TokenClaims::fakePermissions(['*']);
+
+        $this->assertSame(7, app(TenantContext::class)->getTenantId());
     }
 }
