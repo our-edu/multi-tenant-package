@@ -61,6 +61,31 @@ class SessionBindingTest extends IamTestCase
         $this->assertNull(app(FakeUserSession::class)->timezone);
     }
 
+    public function test_the_session_also_carries_the_configured_attribute_names(): void
+    {
+        config([
+            'multi-tenant.session.tenant_column' => 'school_id',
+            'multi-tenant.timezone.session_attribute' => 'tz',
+            'multi-tenant.timezone.session_branch_attribute' => 'active_branch',
+        ]);
+        Http::fake(['*' => Http::response($this->validClaims([
+            'branch' => 'branch-1',
+            'timezone' => 'Asia/Riyadh',
+        ]))]);
+        $this->withBearer('token');
+
+        $session = app(FakeUserSession::class);
+
+        // What the tenant resolver and the timezone context read
+        $this->assertSame(1, $session->school_id);
+        $this->assertSame('Asia/Riyadh', $session->tz);
+        $this->assertSame('branch-1', $session->active_branch);
+        // The standard attributes stay, for service code that reads them directly
+        $this->assertSame(1, $session->tenant_id);
+        $this->assertSame('Asia/Riyadh', $session->timezone);
+        $this->assertSame('branch-1', $session->branch_uuid);
+    }
+
     public function test_services_can_map_extra_attributes(): void
     {
         Http::fake(['*' => Http::response($this->validClaims(['student_uuid' => 'student-1']))]);

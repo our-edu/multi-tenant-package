@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace Ouredu\MultiTenant\Iam\Concerns;
 
 use Ouredu\MultiTenant\Iam\TokenClaims;
+use Ouredu\MultiTenant\Tenancy\CurrentSession;
 
 /**
  * For a service's UserSession model: builds it from the request's IAM claims.
@@ -41,6 +42,12 @@ trait HasTokenClaims
         $this->tenant_id = $claims->tenant_id;
         $this->branch_educational_systems = $claims->branch_educational_systems;
         $this->timezone = $claims->timezone;
+
+        // Also under the names the package reads (tenant resolver, timezone), which a
+        // service may configure; with the defaults these are the attributes above
+        $this->{CurrentSession::tenantAttribute()} = $claims->tenant_id;
+        $this->{CurrentSession::branchAttribute()} = $claims->branch_uuid;
+        $this->{CurrentSession::timezoneAttribute()} = $claims->timezone;
     }
 
     protected function fillExtraFromTokenClaims(TokenClaims $claims): void

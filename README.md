@@ -651,11 +651,13 @@ $text = $quiz->end_at->inTenantTz('Africa/Cairo')->format('H:i');   // explicit 
 $startsAt = TenantTimezone::parse($request->input('starts_at'));
 ```
 
-`current()` reads the session helper (`multi-tenant.session.helper`) for the `timezone` attribute,
-so each service must copy the claim onto its session object:
+`current()` reads the session helper (`multi-tenant.session.helper`) for the `timezone` attribute
+(`multi-tenant.timezone.session_attribute`). A session built with `HasTokenClaims` already carries
+the IAM `timezone` claim, under that configured name, so a migrated service needs no extra code.
+A service that still hydrates its own session must copy the claim itself:
 
 ```php
-// AppServiceProvider — where the UserSession is hydrated from /token/claims
+// AppServiceProvider — only for a session not built with HasTokenClaims
 $userSession->timezone = $tokenClaims->timezone;
 ```
 
@@ -759,7 +761,8 @@ Config (`multi-tenant.timezone.*`): `default` (fallback zone, null → `app.time
 | Item | Description |
 |--------|-------------|
 | `user_uuid`, `role_name` | Always present (claims without them are rejected) |
-| `role_uuid`, `branch_uuid`, `academic_year_uuid`, `tenant_id` | Nullable |
+| `role_uuid`, `branch_uuid`, `academic_year_uuid`, `timezone` | Nullable |
+| `tenant_id` | `int`, or `null` when missing or not numeric |
 | `check_branch` | `true` when the active branch is a specific branch (not `'*'`) |
 | `user_branches`, `branch_educational_systems`, `user_educational_systems` | Arrays, default `[]` |
 | `is_valid`, `is_active` | Booleans, default `false` |
@@ -786,7 +789,7 @@ Config (`multi-tenant.timezone.*`): `default` (fallback zone, null → `app.time
 
 | Method | Description |
 |--------|-------------|
-| `fromTokenClaims(TokenClaims $claims): static` | New session with `user_uuid`/`user_id`, `role_uuid`/`role_id`, `role_name`, `branch_uuid`, `user_branches`, `check_branch`, `academic_year_uuid`, `is_valid`, `tenant_id`, `branch_educational_systems` |
+| `fromTokenClaims(TokenClaims $claims): static` | New session with `user_uuid`/`user_id`, `role_uuid`/`role_id`, `role_name`, `branch_uuid`, `user_branches`, `check_branch`, `academic_year_uuid`, `is_valid`, `tenant_id`, `branch_educational_systems`, `timezone`; also the tenant, branch and timezone values under the configured attribute names (`multi-tenant.session.tenant_column`, `multi-tenant.timezone.session_branch_attribute`, `multi-tenant.timezone.session_attribute`) when they differ |
 | `fillExtraFromTokenClaims(TokenClaims $claims): void` | Override to map service-specific claims |
 
 ### UtcDateTime Cast / SerializesDatesAsIso Trait

@@ -9,9 +9,8 @@ declare(strict_types=1);
 
 namespace Ouredu\MultiTenant\Resolvers;
 
-use Illuminate\Support\Facades\App;
 use Ouredu\MultiTenant\Contracts\TenantResolver;
-use Throwable;
+use Ouredu\MultiTenant\Tenancy\CurrentSession;
 
 /**
  * UserSessionTenantResolver
@@ -32,12 +31,7 @@ class UserSessionTenantResolver implements TenantResolver
      */
     public function resolveTenantId(): ?int
     {
-        // Skip resolution in console (except when running tests)
-        if (App::runningInConsole() && ! App::runningUnitTests()) {
-            return null;
-        }
-
-        // Get session from helper function
+        // Null in console (except tests), without the helper, or when it throws
         $session = $this->getSessionFromHelper();
 
         if (! $session) {
@@ -55,19 +49,7 @@ class UserSessionTenantResolver implements TenantResolver
      */
     protected function getSessionFromHelper(): ?object
     {
-        $helperName = $this->getSessionHelperName();
-
-        if (! function_exists($helperName)) {
-            return null;
-        }
-
-        try {
-            $session = $helperName();
-
-            return is_object($session) ? $session : null;
-        } catch (Throwable) {
-            return null;
-        }
+        return CurrentSession::get();
     }
 
     /**
@@ -75,7 +57,7 @@ class UserSessionTenantResolver implements TenantResolver
      */
     protected function getSessionHelperName(): string
     {
-        return (string) config('multi-tenant.session.helper', 'getSession');
+        return CurrentSession::helperName();
     }
 
     /**
@@ -98,7 +80,6 @@ class UserSessionTenantResolver implements TenantResolver
      */
     protected function getTenantColumn(): string
     {
-        return (string) (config('multi-tenant.session.tenant_column')
-            ?? config('multi-tenant.tenant_column', 'tenant_id'));
+        return CurrentSession::tenantAttribute();
     }
 }

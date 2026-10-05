@@ -51,7 +51,7 @@ final class TokenClaims
         $this->academic_year_uuid = $data['academic_year_uuid'] ?? null;
         $this->is_valid = (bool) ($data['is_valid'] ?? false);
         $this->is_active = (bool) ($data['is_active'] ?? false);
-        $this->tenant_id = isset($data['tenant_id']) ? (int) $data['tenant_id'] : null;
+        $this->tenant_id = is_numeric($data['tenant_id'] ?? null) ? (int) $data['tenant_id'] : null;
         $this->branch_educational_systems = $data['branch_educational_systems'] ?? [];
         $this->user_educational_systems = $data['user_educational_systems'] ?? [];
         $this->timezone = $data['timezone'] ?? null;

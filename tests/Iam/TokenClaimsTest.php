@@ -61,6 +61,15 @@ class TokenClaimsTest extends TestCase
         $this->assertNull($claims->timezone);
     }
 
+    public function test_a_non_numeric_tenant_id_is_null(): void
+    {
+        foreach (['abc', '', [], true] as $tenantId) {
+            $claims = new TokenClaims(['user_uuid' => 'u', 'role_name' => 'r', 'tenant_id' => $tenantId]);
+
+            $this->assertNull($claims->tenant_id);
+        }
+    }
+
     public function test_a_wildcard_branch_does_not_require_a_branch_check(): void
     {
         $claims = new TokenClaims(['user_uuid' => 'u', 'role_name' => 'r', 'branch' => '*']);

@@ -32,11 +32,20 @@ their local `TokenClaimSingleton`, `TokenClaimsResponse`, `AuthorizeSingleton`, 
     read through `IamConfig` so defaults survive a partial block in a published config
   - `multi-tenant::iam.*` translations (en, ar) for the error `detail`; services override them in
     `lang/vendor/multi-tenant/{locale}/iam.php`
+  - `TokenClaims::$timezone` (the IAM `timezone` claim), copied onto the session by `HasTokenClaims`, so
+    `TenantTimezone::current()` works without service code
+  - `HasTokenClaims` also writes the tenant, branch and timezone values under the configured session
+    attribute names (`multi-tenant.session.tenant_column`, `multi-tenant.timezone.session_branch_attribute`,
+    `multi-tenant.timezone.session_attribute`), the same names the tenant resolver and `TimezoneContext` read
+- `CurrentSession` (`Ouredu\MultiTenant\Tenancy`) — the one session lookup through `multi-tenant.session.helper`
+  (null in console, without the helper, or when it throws) and the session attribute names; shared by
+  `UserSessionTenantResolver` and `TimezoneContext`
 - `guzzlehttp/guzzle` requirement (`^7.2`), needed by the IAM HTTP client
 
 ### Notes
 - IAM is called at the service's own `config('app.iam_service_url')` (`IAM_SERVICE_URL`); a service
   without it gets a `RuntimeException` naming the missing setting
+- A non-numeric `tenant_id` claim resolves to `null` (no tenant), never to tenant `0`
 - The `role` / `permission` aliases are registered only with `iam.register_middleware_aliases`, and
   only when the service's HTTP Kernel does not already define them (its own middleware is kept)
 
