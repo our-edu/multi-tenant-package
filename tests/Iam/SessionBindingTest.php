@@ -31,6 +31,7 @@ class SessionBindingTest extends IamTestCase
             'user_branches' => ['branch-1'],
             'academic_year_uuid' => 'year-1',
             'branch_educational_systems' => ['es-1'],
+            'timezone' => 'Asia/Riyadh',
         ]))]);
         $this->withBearer('token');
 
@@ -49,6 +50,15 @@ class SessionBindingTest extends IamTestCase
         $this->assertTrue($session->is_valid);
         $this->assertSame(1, $session->tenant_id);
         $this->assertSame(['es-1'], $session->branch_educational_systems);
+        $this->assertSame('Asia/Riyadh', $session->timezone);
+    }
+
+    public function test_the_session_timezone_is_null_when_iam_sends_none(): void
+    {
+        Http::fake(['*' => Http::response($this->validClaims())]);
+        $this->withBearer('token');
+
+        $this->assertNull(app(FakeUserSession::class)->timezone);
     }
 
     public function test_services_can_map_extra_attributes(): void

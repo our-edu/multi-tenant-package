@@ -40,6 +40,7 @@ trait HasTokenClaims
         $this->is_valid = $claims->is_valid;
         $this->tenant_id = $claims->tenant_id;
         $this->branch_educational_systems = $claims->branch_educational_systems;
+        $this->timezone = $claims->timezone;
     }
 
     protected function fillExtraFromTokenClaims(TokenClaims $claims): void

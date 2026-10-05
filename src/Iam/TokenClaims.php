@@ -38,6 +38,8 @@ final class TokenClaims
 
     public readonly array $user_educational_systems;
 
+    public readonly ?string $timezone;
+
     public function __construct(private readonly array $data)
     {
         $this->user_uuid = (string) ($data['user_uuid'] ?? '');
@@ -52,6 +54,7 @@ final class TokenClaims
         $this->tenant_id = isset($data['tenant_id']) ? (int) $data['tenant_id'] : null;
         $this->branch_educational_systems = $data['branch_educational_systems'] ?? [];
         $this->user_educational_systems = $data['user_educational_systems'] ?? [];
+        $this->timezone = $data['timezone'] ?? null;
     }
 
     /**
