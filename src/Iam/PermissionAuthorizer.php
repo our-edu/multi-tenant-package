@@ -11,8 +11,6 @@ namespace Ouredu\MultiTenant\Iam;
 
 use Exception;
 use Illuminate\Http\Exceptions\HttpResponseException;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Asks IAM whether the current request's token holds a permission.
@@ -38,7 +36,7 @@ class PermissionAuthorizer
 
     protected function ask(string $resource, string $action): bool
     {
-        $token = request()->bearerToken();
+        $token = IamClient::token();
         if (! $token) {
             return false;
         }
@@ -46,31 +44,25 @@ class PermissionAuthorizer
         $url = IamConfig::url('authorize');
 
         try {
-            $response = Http::withToken($token)
-                ->timeout(IamConfig::timeout())
-                ->post($url, [
-                    'token' => $token,
-                    'action' => $action,
-                    'resource' => $resource,
-                ]);
+            $response = IamClient::http($token)->post($url, [
+                'token' => $token,
+                'action' => $action,
+                'resource' => $resource,
+            ]);
         } catch (Exception $e) {
-            Log::error('Failed to authorize permission with IAM service', [
+            IamClient::logError('Failed to authorize permission with IAM service', $url, [
                 'error' => $e->getMessage(),
                 'permission' => "$resource.$action",
-                'service' => config('app.name'),
-                'url' => $url,
             ]);
 
             throw ErrorResponse::serviceUnavailable();
         }
 
         if ($response->serverError()) {
-            Log::error('IAM service returned error while authorizing permission', [
+            IamClient::logError('IAM service returned error while authorizing permission', $url, [
                 'status' => $response->status(),
                 'body' => $response->body(),
                 'permission' => "$resource.$action",
-                'service' => config('app.name'),
-                'url' => $url,
             ]);
 
             throw ErrorResponse::serviceUnavailable();

@@ -13,7 +13,7 @@ use Closure;
 use Illuminate\Http\Request;
 use InvalidArgumentException;
 use Ouredu\MultiTenant\Iam\ErrorResponse;
-use Ouredu\MultiTenant\Iam\IamConfig;
+use Ouredu\MultiTenant\Iam\Middleware\Concerns\GuardsIamRoutes;
 use Ouredu\MultiTenant\Iam\PermissionAuthorizer;
 
 /**
@@ -22,18 +22,17 @@ use Ouredu\MultiTenant\Iam\PermissionAuthorizer;
  */
 class PermissionMiddleware
 {
+    use GuardsIamRoutes;
+
     public function __construct(private readonly PermissionAuthorizer $authorizer)
     {
     }
 
     public function handle(Request $request, Closure $next, string|array $permission, ?string $guard = null): mixed
     {
-        // Guests get 403, not 401, to keep the status clients already handle
-        if (auth($guard ?? IamConfig::get('guard'))->guest()) {
-            throw ErrorResponse::unauthorizedAction();
-        }
+        $this->denyGuests($guard);
 
-        $permissions = is_array($permission) ? $permission : explode('|', $permission);
+        $permissions = self::alternatives($permission);
         foreach ($permissions as $candidate) {
             [$resource, $action] = self::parse($candidate);
             if ($this->authorizer->allows($resource, $action)) {

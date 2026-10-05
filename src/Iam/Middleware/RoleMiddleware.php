@@ -12,7 +12,7 @@ namespace Ouredu\MultiTenant\Iam\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Ouredu\MultiTenant\Iam\ErrorResponse;
-use Ouredu\MultiTenant\Iam\IamConfig;
+use Ouredu\MultiTenant\Iam\Middleware\Concerns\GuardsIamRoutes;
 use Ouredu\MultiTenant\Iam\TokenClaimsResolver;
 
 /**
@@ -21,21 +21,19 @@ use Ouredu\MultiTenant\Iam\TokenClaimsResolver;
  */
 class RoleMiddleware
 {
+    use GuardsIamRoutes;
+
     public function __construct(private readonly TokenClaimsResolver $resolver)
     {
     }
 
     public function handle(Request $request, Closure $next, string|array $role, ?string $guard = null): mixed
     {
-        // Guests get 403, not 401, to keep the status clients already handle
-        if (auth($guard ?? IamConfig::get('guard'))->guest()) {
-            throw ErrorResponse::unauthorizedAction();
-        }
+        $this->denyGuests($guard);
 
         $claims = $this->resolver->requireClaims();
 
-        $allowedRoles = is_array($role) ? $role : explode('|', $role);
-        if (! in_array($claims->role_name, $allowedRoles, true)) {
+        if (! in_array($claims->role_name, self::alternatives($role), true)) {
             throw ErrorResponse::unauthorizedAction();
         }
 

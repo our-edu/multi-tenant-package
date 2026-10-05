@@ -13,8 +13,6 @@ use Exception;
 use Illuminate\Http\Client\Response;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Fetches the current request's token claims from IAM.
@@ -102,7 +100,7 @@ class TokenClaimsResolver
 
     protected function fetch(): ?TokenClaims
     {
-        $token = request()->bearerToken();
+        $token = IamClient::token();
         if (! $token) {
             $this->failure = ClaimsFailure::MissingToken;
 
@@ -112,14 +110,10 @@ class TokenClaimsResolver
         $url = IamConfig::url('token/claims');
 
         try {
-            $response = Http::withToken($token)
-                ->timeout(IamConfig::timeout())
-                ->get($url);
+            $response = IamClient::http($token)->get($url);
         } catch (Exception $e) {
-            Log::error('Failed to fetch token claims from IAM service', [
+            IamClient::logError('Failed to fetch token claims from IAM service', $url, [
                 'error' => $e->getMessage(),
-                'service' => config('app.name'),
-                'url' => $url,
             ]);
             $this->failure = ClaimsFailure::Unavailable;
 
@@ -127,11 +121,9 @@ class TokenClaimsResolver
         }
 
         if (! $response->successful()) {
-            Log::error('IAM service returned error', [
+            IamClient::logError('IAM service returned error', $url, [
                 'status' => $response->status(),
                 'body' => $response->body(),
-                'service' => config('app.name'),
-                'url' => $url,
             ]);
             $this->failure = $response->serverError()
                 ? ClaimsFailure::Unavailable
@@ -144,10 +136,8 @@ class TokenClaimsResolver
         $data = $response->json('data');
         if (! is_array($data) || empty($data['user_uuid']) || empty($data['role_name'])) {
             // A 2xx without the identity claims would build a session with a null role
-            Log::error('IAM service returned incomplete token claims', [
+            IamClient::logError('IAM service returned incomplete token claims', $url, [
                 'body' => $response->body(),
-                'service' => config('app.name'),
-                'url' => $url,
             ]);
             $this->failure = ClaimsFailure::Rejected;
 
