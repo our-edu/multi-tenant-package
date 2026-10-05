@@ -18,3 +18,13 @@ if (! function_exists('fake_timezone_session')) {
         return FakeSession::$session;
     }
 }
+
+if (! function_exists('fake_rejecting_session')) {
+    /**
+     * A session helper that throws, like a service's getSession() when IAM refuses the token.
+     */
+    function fake_rejecting_session(): ?object
+    {
+        throw new RuntimeException('IAM refused the token');
+    }
+}

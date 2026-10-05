@@ -5,6 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - Unreleased
+
+No breaking changes and no behavior change on upgrade: nothing below runs until a service maps the
+middleware, binds its session or calls the new classes. Services adopt it in their own PR, replacing
+their local `TokenClaimSingleton`, `TokenClaimsResponse`, `AuthorizeSingleton`, `RoleMiddleware` and
+`PermissionMiddleware` copies (see "Migrating a service" in the README).
+
+### Added
+- IAM token claims and permissions (`Ouredu\MultiTenant\Iam`)
+  - `TokenClaimsResolver` (scoped) — `claims()`, `requireClaims()`, `optionalClaims()`, `failure()`, `hasClaims()`;
+    one `/token/claims` call per request (a failure is cached too); IAM's own 401 / 403 status and body
+    when it refuses the token (the standard error under IAM's status if it sent no JSON object), 401 for
+    other 4xx answers or claims without `user_uuid` / `role_name`, 503 when IAM is unreachable, times out or errors
+  - `ClaimsFailure` enum — `MissingToken`, `Rejected`, `Unavailable`
+  - `TokenClaims` DTO — typed claims plus `raw()` for keys it does not type and `toArray()`
+  - `PermissionAuthorizer` (scoped) and `iam_can()` — one `/authorize` call per permission per request;
+    denied without a token or on a 4xx, 503 when IAM is down (instead of a 500, or a misleading 403)
+  - `RoleMiddleware` (`role:a|b[,guard]`) and `PermissionMiddleware` (`permission:resource.action|…[,guard]`)
+    with the 401 / 403 / 503 JSON errors (`errors[{status,title,detail}]`); guests get 403
+  - `HasTokenClaims` session-model trait (`fromTokenClaims()`, `fillExtraFromTokenClaims()` hook) and
+    `TokenClaims::bindSession()` for a per-request session binding
+  - `TokenClaims` facade, never cached across requests (Octane), with `fake()`, `fakeFailure()` and
+    `fakePermissions()` for service tests; `token_claims()` helper
+  - `iam` config block (`timeout`, `guard`, `register_middleware_aliases`, `show_permissions_in_error`),
+    read through `IamConfig` so defaults survive a partial block in a published config
+  - `multi-tenant::iam.*` translations (en, ar) for the error `detail`; services override them in
+    `lang/vendor/multi-tenant/{locale}/iam.php`
+  - `TokenClaims::$timezone` (the IAM `timezone` claim), copied onto the session by `HasTokenClaims`, so
+    `TenantTimezone::current()` works without service code
+  - `HasTokenClaims` also writes the tenant, branch and timezone values under the configured session
+    attribute names (`multi-tenant.session.tenant_column`, `multi-tenant.timezone.session_branch_attribute`,
+    `multi-tenant.timezone.session_attribute`), the same names the tenant resolver and `TimezoneContext` read
+- `CurrentSession` (`Ouredu\MultiTenant\Tenancy`) — the one session lookup through `multi-tenant.session.helper`
+  (null in console, without the helper, or when it throws) and the session attribute names; shared by
+  `UserSessionTenantResolver` and `TimezoneContext`
+- `guzzlehttp/guzzle` requirement (`^7.2`), needed by the IAM HTTP client
+
+### Notes
+- IAM is called at the service's own `config('app.iam_service_url')` (`IAM_SERVICE_URL`); a service
+  without it gets a `RuntimeException` naming the missing setting
+- A non-numeric `tenant_id` claim resolves to `null` (no tenant), never to tenant `0`
+- The `role` / `permission` aliases are registered only with `iam.register_middleware_aliases`, and
+  only when the service's HTTP Kernel does not already define them (its own middleware is kept)
+
 ## [Unreleased]
 
 ### Changed

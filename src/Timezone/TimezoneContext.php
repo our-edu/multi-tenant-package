@@ -13,6 +13,7 @@ use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
+use Ouredu\MultiTenant\Tenancy\CurrentSession;
 use Ouredu\MultiTenant\Tenancy\TenantContext;
 use Throwable;
 
@@ -207,13 +208,13 @@ class TimezoneContext
      */
     private function fromSession(): ?string
     {
-        $session = $this->session();
+        $session = CurrentSession::get($this->app);
 
         if ($session === null) {
             return null;
         }
 
-        $attribute = (string) config('multi-tenant.timezone.session_attribute', 'timezone');
+        $attribute = CurrentSession::timezoneAttribute();
 
         try {
             $timezone = $session->{$attribute} ?? null;
@@ -238,10 +239,10 @@ class TimezoneContext
         }
 
         $branchUuid = null;
-        $session = $this->session();
+        $session = CurrentSession::get($this->app);
 
         if ($session !== null) {
-            $attribute = (string) config('multi-tenant.timezone.session_branch_attribute', 'branch_uuid');
+            $attribute = CurrentSession::branchAttribute();
 
             try {
                 $branchUuid = $session->{$attribute} ?? null;
@@ -251,33 +252,6 @@ class TimezoneContext
         }
 
         return $this->for($tenantId, is_string($branchUuid) ? $branchUuid : null);
-    }
-
-    /**
-     * The user session object from the configured helper, or null.
-     *
-     * Skipped in console (except unit tests) so queue workers and cron never
-     * attempt a claims lookup that has no bearer token behind it.
-     */
-    private function session(): ?object
-    {
-        if ($this->app->runningInConsole() && ! $this->app->runningUnitTests()) {
-            return null;
-        }
-
-        $helper = (string) config('multi-tenant.session.helper', 'getSession');
-
-        if (! function_exists($helper)) {
-            return null;
-        }
-
-        try {
-            $session = $helper();
-
-            return is_object($session) ? $session : null;
-        } catch (Throwable) {
-            return null;
-        }
     }
 
     /**

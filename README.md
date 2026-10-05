@@ -24,6 +24,7 @@ A Laravel package for building multi-tenant applications. This package provides 
 - **Laravel Octane Compatible** - Uses scoped bindings for request isolation
 - **Validation Awareness** - `exists` and `unique` rules can auto-scope by tenant
 - **Tenant Timezone** - Per-tenant/branch IANA zone from the JWT claim or the database, an instant cast, ISO-8601 serialization and a tzdata guard
+- **IAM Token Claims & Permissions** - One shared client for IAM claims and permission checks, with `role` / `permission` middleware, 401 / 403 / 503 responses and test fakes
 
 ## Requirements
 
@@ -380,6 +381,123 @@ public function render($request, Throwable $e)
 }
 ```
 
+### IAM Token Claims and Permissions
+
+`Ouredu\MultiTenant\Iam` resolves the request's IAM token claims and permissions, with the
+`role` / `permission` middleware and the 401 / 403 / 503 responses built on them. Each IAM answer
+is fetched once per request (scoped bindings, Octane safe).
+
+```php
+use Ouredu\MultiTenant\Iam\ClaimsFailure;
+use Ouredu\MultiTenant\Iam\Facades\TokenClaims;
+
+$claims = token_claims()->requireClaims();  // TokenClaims, or throws IAM's 401 / 403 (token refused) / 503 (IAM down)
+token_claims()->optionalClaims();           // null only when the request has no token
+token_claims()->claims();                   // null on any failure; failure() says why (ClaimsFailure)
+
+$claims->user_uuid; $claims->role_name; $claims->user_branches; $claims->tenant_id;
+$claims->raw('some_new_iam_field');
+
+iam_can('classrooms', 'index');             // IAM permission check; 503 if IAM is down
+```
+
+Middleware, mapped in the service's HTTP Kernel. With `iam.register_middleware_aliases` on, the package
+registers these aliases itself, but only those the Kernel does not already define:
+
+```php
+'role' => \Ouredu\MultiTenant\Iam\Middleware\RoleMiddleware::class,             // role:teacher|admin
+'permission' => \Ouredu\MultiTenant\Iam\Middleware\PermissionMiddleware::class, // permission:classrooms.index|classrooms.show
+```
+
+Session model and tests:
+
+```php
+class UserSession extends Model
+{
+    use \Ouredu\MultiTenant\Iam\Concerns\HasTokenClaims; // fromTokenClaims(); override fillExtraFromTokenClaims()
+}
+
+TokenClaims::bindSession(UserSession::class);           // AppServiceProvider::register()
+
+TokenClaims::fake(['role_name' => 'teacher']);          // tests: no IAM call, no token needed
+TokenClaims::fakeFailure(ClaimsFailure::Unavailable);
+TokenClaims::fakePermissions(['classrooms.index']);     // ['*'] allows everything
+```
+
+| Case | Status | Body |
+|---|---|---|
+| IAM refused the token (its 401 / 403) | IAM's status | IAM's own JSON (e.g. `{"message": "Token is not active"}`), so clients can tell an expired token from a deactivated one; the standard error under IAM's status if IAM sent no JSON object |
+| No token, another IAM 4xx, claims without `user_uuid` / `role_name` | 401 | `invalid_session` |
+| IAM unreachable, timed out or 5xx (claims or permissions) | 503 | `session_service_unavailable` |
+| Guest, role / branch not allowed, permission denied | 403 | `unauthorized_action` |
+
+The standard errors use the body `{"errors":[{"status","title","detail"}]}`.
+
+#### Configuration
+
+IAM is called at the service's own `config('app.iam_service_url')` (`IAM_SERVICE_URL`); the package
+has no IAM URL setting.
+
+```php
+// config/multi-tenant.php — every key is optional, a partial block keeps the other defaults
+'iam' => [
+    'timeout' => 10,                       // seconds before IAM counts as unavailable (503)
+    'guard' => null,                       // guard the middleware checks when a route passes none
+    'register_middleware_aliases' => false, // register `role` / `permission` when the Kernel has none
+    'show_permissions_in_error' => null,   // name the needed permissions in the 403; null follows
+                                           // config('permission.display_permission_in_exception')
+],
+```
+
+The error `detail` texts come from `multi-tenant::iam.*`; reword them in the service's
+`lang/vendor/multi-tenant/{locale}/iam.php` (see [Translations](#translations)).
+
+#### Things to know
+
+- **Do not catch the 401 / 503.** `requireClaims()`, `optionalClaims()` and `iam_can()` throw an
+  `HttpResponseException`, which extends `RuntimeException`. Inside `try { … } catch (Exception)` it
+  becomes whatever the catch returns (usually a 500), so call them before the `try`.
+- **Jobs and commands have no token.** `failure()` is `MissingToken` there; pass the `user_uuid`, tenant
+  and other values the job needs when dispatching it.
+- **New IAM claims** are readable with `$claims->raw('key')` before `TokenClaims` types them. IAM caches
+  each token's claims, so a new claim reaches existing tokens only after that cache expires or on the
+  next login.
+
+#### Migrating a service
+
+For a service that has its own `TokenClaimSingleton` / `TokenClaimsResponse` / `AuthorizeSingleton` /
+`RoleMiddleware` / `PermissionMiddleware`:
+
+1. Require the package: `composer require our-edu/multi-tenant:^2.1`.
+2. Compare the service's local copies with `Ouredu\MultiTenant\Iam`; a claim only that service reads is
+   mapped in `fillExtraFromTokenClaims()` with `$claims->raw('key')`.
+3. Point the HTTP Kernel aliases at the package middleware (see above).
+4. Add `HasTokenClaims` to the session model, and replace the session binding in `AppServiceProvider`
+   with `TokenClaims::bindSession(UserSession::class)`.
+5. Keep `getSession()` returning the session, and let IAM failures stop the request:
+
+   ```php
+   function getSession(): ?UserSession
+   {
+       $session = app(UserSession::class);
+       if ($session) {
+           return $session;
+       }
+
+       // Throws the 401 / 503 response unless the request simply has no token
+       token_claims()->optionalClaims();
+
+       return null;
+   }
+   ```
+
+6. Replace `app(AuthorizeSingleton::class)->authorize($resource, $action)` with `iam_can($resource, $action)`.
+7. Delete the local copies and their container bindings.
+8. Move every `getSession()` / `requireClaims()` call that sits inside `try { … } catch (Exception)`
+   before the `try`, on routes that do not run `role:` middleware first.
+
+IAM failures that used to give a `null` session now return 401 / 503; say so in the service's PR.
+
 ### Header Tenant Resolver
 
 For API routes where the tenant ID is passed as a header (e.g., external integrations, webhooks):
@@ -533,11 +651,13 @@ $text = $quiz->end_at->inTenantTz('Africa/Cairo')->format('H:i');   // explicit 
 $startsAt = TenantTimezone::parse($request->input('starts_at'));
 ```
 
-`current()` reads the session helper (`multi-tenant.session.helper`) for the `timezone` attribute,
-so each service must copy the claim onto its session object:
+`current()` reads the session helper (`multi-tenant.session.helper`) for the `timezone` attribute
+(`multi-tenant.timezone.session_attribute`). A session built with `HasTokenClaims` already carries
+the IAM `timezone` claim, under that configured name, so a migrated service needs no extra code.
+A service that still hydrates its own session must copy the claim itself:
 
 ```php
-// AppServiceProvider — where the UserSession is hydrated from /token/claims
+// AppServiceProvider — only for a session not built with HasTokenClaims
 $userSession->timezone = $tokenClaims->timezone;
 ```
 
@@ -626,6 +746,52 @@ Config (`multi-tenant.timezone.*`): `default` (fallback zone, null → `app.time
 |--------|-------------|
 | `$date->inTenantTz(?string $timezone = null): static` | Copy of the date in the current (or given) tenant zone |
 
+### TokenClaimsResolver (`token_claims()`, `TokenClaims` facade)
+
+| Method | Description |
+|--------|-------------|
+| `claims(): ?TokenClaims` | The request's claims, or null on any failure (one IAM call per request) |
+| `requireClaims(): TokenClaims` | The claims, or throws IAM's own 401 / 403 (refused), the standard 401 (no token / unusable claims) or 503 (IAM down) |
+| `optionalClaims(): ?TokenClaims` | Null only when the request has no token; otherwise like `requireClaims()` |
+| `failure(): ?ClaimsFailure` | Why `claims()` is null: `MissingToken`, `Rejected` or `Unavailable` |
+| `hasClaims(): bool` | Whether the claims resolved |
+
+### TokenClaims
+
+| Item | Description |
+|--------|-------------|
+| `user_uuid`, `role_name` | Always present (claims without them are rejected) |
+| `role_uuid`, `branch_uuid`, `academic_year_uuid`, `timezone` | Nullable |
+| `tenant_id` | `int`, or `null` when missing or not numeric |
+| `check_branch` | `true` when the active branch is a specific branch (not `'*'`) |
+| `user_branches`, `branch_educational_systems`, `user_educational_systems` | Arrays, default `[]` |
+| `is_valid`, `is_active` | Booleans, default `false` |
+| `raw(string $key, mixed $default = null): mixed` | Any key of the IAM payload |
+| `toArray(): array` | The IAM payload |
+
+### Permissions
+
+| Item | Description |
+|--------|-------------|
+| `iam_can(string $resource, string $action): bool` | IAM permission check, once per permission per request; 503 if IAM is down |
+| `PermissionAuthorizer::allows(string $resource, string $action): bool` | The same, from the container |
+
+### TokenClaims Facade (setup and testing)
+
+| Method | Description |
+|--------|-------------|
+| `bindSession(string $sessionClass): void` | Scoped binding: null without claims, else `$sessionClass::fromTokenClaims()` |
+| `fake(array $claims = []): TokenClaims` | Every request resolves these claims (merged over defaults), without IAM |
+| `fakeFailure(ClaimsFailure $failure): void` | Every request fails to resolve claims this way |
+| `fakePermissions(array $allowed): void` | Allow only these `resource.action` permissions; `['*']` allows all |
+
+### HasTokenClaims Trait
+
+| Method | Description |
+|--------|-------------|
+| `fromTokenClaims(TokenClaims $claims): static` | New session with `user_uuid`/`user_id`, `role_uuid`/`role_id`, `role_name`, `branch_uuid`, `user_branches`, `check_branch`, `academic_year_uuid`, `is_valid`, `tenant_id`, `branch_educational_systems`, `timezone`; also the tenant, branch and timezone values under the configured attribute names (`multi-tenant.session.tenant_column`, `multi-tenant.timezone.session_branch_attribute`, `multi-tenant.timezone.session_attribute`) when they differ |
+| `fillExtraFromTokenClaims(TokenClaims $claims): void` | Override to map service-specific claims |
+
 ### UtcDateTime Cast / SerializesDatesAsIso Trait
 
 | Item | Description |
@@ -635,7 +801,20 @@ Config (`multi-tenant.timezone.*`): `default` (fallback zone, null → `app.time
 
 ## Translations
 
-The package supports translatable exception messages. Language files are **automatically published** when the package is installed.
+The package supports translatable exception messages and IAM error details (`exceptions.php`, `iam.php`). Language files are **automatically published** when the package is installed.
+
+A service that already has `lang/vendor/multi-tenant/` does not get `iam.php` copied there; the package's
+own `iam.php` is used until the service adds one to override it:
+
+```php
+// lang/vendor/multi-tenant/en/iam.php — only the keys you reword; the rest keep the package text
+return [
+    'invalid_session' => 'Your session has expired, please log in again',
+];
+```
+
+Keys: `invalid_session` (401), `session_service_unavailable` (503), `unauthorized_action`,
+`permission_denied` and `permission_denied_detailed` (403, with `:permissions`).
 
 **Supported languages:** English (en), Arabic (ar)
 
