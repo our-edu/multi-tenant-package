@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (2.1.0)
+- `HasUserScope` trait: opt-in local scope `userScope()` driven by the role scope claims and a
+  per-model `userScopeMap()`; `userScopeClaims()` reads the mapped claims from
+  `multi-tenant.session.helper` by default and can be overridden
+  (`null` = no restriction, `[]` = matches nothing), plus user-scoped implicit route model
+  binding (out-of-scope id → 404)
+- `user_scope` config block: `enabled`, `route_binding`
+
 ### Changed
 - **BREAKING:** `excluded_routes` config now uses path patterns instead of route names
   - For API routes: use `'api/*/*/health'` to match `api/v1/ar/health`, `api/v2/en/health`
