@@ -37,6 +37,7 @@ class HasUserScopeTest extends TestCase
             'database' => ':memory:',
             'prefix' => '',
         ]);
+        config()->set('multi-tenant.session.helper', 'fake_timezone_session');
         config()->set('multi-tenant.query_listener.enabled', false);
 
         Schema::create('user_scope_grades', function (Blueprint $table) {
@@ -181,26 +182,26 @@ class HasUserScopeTest extends TestCase
 
         $this->assertSame('L4', (new UserScopeLesson())->resolveRouteBinding('L4')?->uuid);
     }
-}
 
-/**
- * Stands in for a service's base model: the service supplies the claims from its own session.
- */
-abstract class UserScopeBaseModel extends Model
-{
-    protected function userScopeClaims(): array
+    public function testMissingSessionHelperRestrictsNothing(): void
     {
-        $session = FakeSession::$session;
+        config()->set('multi-tenant.session.helper', 'no_such_session_helper');
+        $this->claims(['grades' => ['G1']]);
 
-        return [
-            'educational_stages' => $session?->educational_stages ?? null,
-            'grades' => $session?->grades ?? null,
-            'subjects' => $session?->subjects ?? null,
-        ];
+        $this->assertSame(['L1', 'L2', 'L3', 'L4'], $this->scopedLessons());
+    }
+
+    public function testServiceCanOverrideClaims(): void
+    {
+        $this->claims(['grades' => ['G1']]);
+
+        $lessons = UserScopeLessonWithOwnClaims::query()->userScope()->orderBy('uuid')->pluck('uuid')->all();
+
+        $this->assertSame(['L3'], $lessons);
     }
 }
 
-class UserScopeGrade extends UserScopeBaseModel
+class UserScopeGrade extends Model
 {
     use HasUserScope;
 
@@ -220,7 +221,7 @@ class UserScopeGrade extends UserScopeBaseModel
     }
 }
 
-class UserScopeLesson extends UserScopeBaseModel
+class UserScopeLesson extends Model
 {
     use HasUserScope;
 
@@ -246,5 +247,16 @@ class UserScopeLesson extends UserScopeBaseModel
             'grades' => 'grade_uuid',
             'subjects' => 'subject_uuid',
         ];
+    }
+}
+
+/**
+ * A service that keeps its claims somewhere other than the session overrides userScopeClaims().
+ */
+class UserScopeLessonWithOwnClaims extends UserScopeLesson
+{
+    protected function userScopeClaims(): array
+    {
+        return ['grades' => ['G2']];
     }
 }

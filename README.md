@@ -595,28 +595,15 @@ Scoped roles (HOD, Section Head, Head of Stage, School Guide) get their scope fr
 is **opt-in and local**: unlike `HasTenant`, it is not a global scope, so relations, eager loads and
 other queries are unchanged.
 
-The package does not read the claims. Each service supplies them in `userScopeClaims()`, usually
-once on its base model, from its own session:
+The claims are read from the session (`multi-tenant.session.helper`, default `getSession()`), using
+the same names as the keys of `userScopeMap()`. A service that keeps them elsewhere overrides
+`userScopeClaims()`.
 
 ```php
 use Ouredu\MultiTenant\Traits\HasTenant;
 use Ouredu\MultiTenant\Traits\HasUserScope;
 
-abstract class BaseModel extends Model
-{
-    protected function userScopeClaims(): array
-    {
-        $session = getSession();
-
-        return [
-            'educational_stages' => $session?->educational_stages,
-            'grades' => $session?->grades,
-            'subjects' => $session?->subjects,
-        ];
-    }
-}
-
-class Classroom extends BaseModel
+class Classroom extends Model
 {
     use HasTenant, HasUserScope;
 
@@ -644,8 +631,8 @@ Route::get('classrooms/{classroom}', fn (Classroom $classroom) => $classroom);
 | list of uuids | `whereIn` on the mapped column or relation |
 
 - Claims combine with AND. A claim the model does not map is not applied.
-- With no session (queue workers, console), `userScopeClaims()` should return nulls, so nothing is
-  filtered; a queued export must apply the scope itself.
+- Without a session (no helper function, or the helper returns null) nothing is filtered; a queued
+  export must apply the scope itself.
 - Writes are not covered: keep explicit validation rules for create and update.
 - A model that defines its own `resolveRouteBindingQuery()` replaces the trait's; call
   `->userScope()` there.

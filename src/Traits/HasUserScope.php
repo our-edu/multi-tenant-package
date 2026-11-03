@@ -12,6 +12,7 @@ namespace Ouredu\MultiTenant\Traits;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
+use Throwable;
 
 /**
  * HasUserScope Trait
@@ -21,25 +22,12 @@ use Illuminate\Support\Str;
  * and implicit route model binding applies it so a by-id route returns 404
  * for an out-of-scope record.
  *
- * The package does not read claims. Each service supplies them through
- * userScopeClaims() (usually once, on its base model, from its own session).
+ * Claims are read from the session (multi-tenant.session.helper, default
+ * getSession()) under the same names as the userScopeMap() keys. Override
+ * userScopeClaims() when a service keeps them elsewhere.
  *
  * Usage:
- *   abstract class BaseModel extends Model
- *   {
- *       protected function userScopeClaims(): array
- *       {
- *           $session = getSession();
- *
- *           return [
- *               'educational_stages' => $session?->educational_stages,
- *               'grades' => $session?->grades,
- *               'subjects' => $session?->subjects,
- *           ];
- *       }
- *   }
- *
- *   class Classroom extends BaseModel
+ *   class Classroom extends Model
  *   {
  *       use HasTenant, HasUserScope;
  *
@@ -72,12 +60,41 @@ trait HasUserScope
     abstract protected function userScopeMap(): array;
 
     /**
-     * The current scope claims, supplied by the service: claim => list of values,
-     * [] (matches nothing) or null (no restriction).
+     * The current scope claims: claim => list of values, [] (matches nothing) or
+     * null (no restriction).
+     *
+     * By default each claim in userScopeMap() is read from the session object
+     * returned by multi-tenant.session.helper (getSession()). Override it when a
+     * service keeps the claims somewhere else.
      *
      * @return array<string, mixed>
      */
-    abstract protected function userScopeClaims(): array;
+    protected function userScopeClaims(): array
+    {
+        $helper = (string) config('multi-tenant.session.helper', 'getSession');
+
+        if (! function_exists($helper)) {
+            return [];
+        }
+
+        try {
+            $session = $helper();
+        } catch (Throwable) {
+            return [];
+        }
+
+        if (! is_object($session)) {
+            return [];
+        }
+
+        $claims = [];
+
+        foreach (array_keys($this->userScopeMap()) as $claim) {
+            $claims[$claim] = $session->{$claim} ?? null;
+        }
+
+        return $claims;
+    }
 
     /**
      * Limit the query to the scope claims.
