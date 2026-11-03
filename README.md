@@ -24,6 +24,7 @@ A Laravel package for building multi-tenant applications. This package provides 
 - **Laravel Octane Compatible** - Uses scoped bindings for request isolation
 - **Validation Awareness** - `exists` and `unique` rules can auto-scope by tenant
 - **Tenant Timezone** - Per-tenant/branch IANA zone from the JWT claim or the database, an instant cast, ISO-8601 serialization and a tzdata guard
+- **User Scope** - Opt-in `HasUserScope` trait that filters lists and route model binding by the role scope claims (stages, grades, subjects)
 
 ## Requirements
 
@@ -586,6 +587,72 @@ php artisan tenant:check-tzdata --tenants  # also validates every stored tenant/
 
 Config (`multi-tenant.timezone.*`): `default` (fallback zone, null → `app.timezone`), `column`,
 `tenants_table`, `branches_table`, `session_attribute`, `session_branch_attribute`.
+
+### User Scope
+
+Scoped roles (HOD, Section Head, Head of Stage, School Guide) get their scope from IAM as claims:
+`educational_stages`, `grades` and `subjects`. `HasUserScope` turns those claims into a filter. It
+is **opt-in and local**: unlike `HasTenant`, it is not a global scope, so relations, eager loads and
+other queries are unchanged.
+
+The package does not read the claims. Each service supplies them in `userScopeClaims()`, usually
+once on its base model, from its own session:
+
+```php
+use Ouredu\MultiTenant\Traits\HasTenant;
+use Ouredu\MultiTenant\Traits\HasUserScope;
+
+abstract class BaseModel extends Model
+{
+    protected function userScopeClaims(): array
+    {
+        $session = getSession();
+
+        return [
+            'educational_stages' => $session?->educational_stages,
+            'grades' => $session?->grades,
+            'subjects' => $session?->subjects,
+        ];
+    }
+}
+
+class Classroom extends BaseModel
+{
+    use HasTenant, HasUserScope;
+
+    // claim => column, or relation.column for a whereHas
+    protected function userScopeMap(): array
+    {
+        return [
+            'grades' => 'grade_uuid',
+            'educational_stages' => 'grade.educational_stage_uuid',
+        ];
+    }
+}
+
+// Lists, look-ups and reports call it explicitly
+Classroom::query()->userScope()->paginate();
+
+// Route model binding applies it automatically: an out-of-scope id returns 404
+Route::get('classrooms/{classroom}', fn (Classroom $classroom) => $classroom);
+```
+
+| Claim value | Effect |
+|-------------|--------|
+| `null` or missing | No restriction (every role without scope values) |
+| `[]` | Matches nothing |
+| list of uuids | `whereIn` on the mapped column or relation |
+
+- Claims combine with AND. A claim the model does not map is not applied.
+- With no session (queue workers, console), `userScopeClaims()` should return nulls, so nothing is
+  filtered; a queued export must apply the scope itself.
+- Writes are not covered: keep explicit validation rules for create and update.
+- A model that defines its own `resolveRouteBindingQuery()` replaces the trait's; call
+  `->userScope()` there.
+- Do not add the trait to IAM models: IAM builds these claims and a scope there would re-enter
+  token resolution.
+
+Config (`multi-tenant.user_scope.*`): `enabled`, `route_binding`.
 
 ## API Reference
 

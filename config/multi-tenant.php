@@ -385,4 +385,40 @@ return [
         'session_attribute' => env('MULTI_TENANT_SESSION_TIMEZONE_ATTRIBUTE', 'timezone'),
         'session_branch_attribute' => env('MULTI_TENANT_SESSION_BRANCH_ATTRIBUTE', 'branch_uuid'),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | User Scope
+    |--------------------------------------------------------------------------
+    |
+    | Role-based data scope used by the opt-in HasUserScope trait. Each
+    | service supplies the claims in userScopeClaims(); each model maps a
+    | claim to a column or a relation path in userScopeMap().
+    |
+    | Claim values: null or missing = no restriction, [] = matches nothing,
+    | a list = whereIn. Claims combine with AND.
+    |
+    */
+    'user_scope' => [
+        /*
+        |--------------------------------------------------------------------------
+        | Enabled
+        |--------------------------------------------------------------------------
+        |
+        | When false, userScope() and the route-binding filter do nothing.
+        |
+        */
+        'enabled' => env('MULTI_TENANT_USER_SCOPE_ENABLED', true),
+
+        /*
+        |--------------------------------------------------------------------------
+        | Route Binding
+        |--------------------------------------------------------------------------
+        |
+        | When true, implicit route model binding ({student}) applies
+        | userScope(), so an out-of-scope id returns 404.
+        |
+        */
+        'route_binding' => env('MULTI_TENANT_USER_SCOPE_ROUTE_BINDING', true),
+    ],
 ];
