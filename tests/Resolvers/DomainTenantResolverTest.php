@@ -123,6 +123,48 @@ class DomainTenantResolverTest extends TestCase
         ], 'public.page'));
     }
 
+    public function testSkipsRequestsWithABearerToken(): void
+    {
+        $this->assertNull($this->resolveFor('admission/applications/terms-and-conditions', [
+            'Origin' => 'https://shorouk.school.example.net',
+            'Authorization' => 'Bearer some.jwt.token',
+        ]));
+    }
+
+    public function testSkipsRequestsWithTheTenantHeaderEvenIfInvalid(): void
+    {
+        foreach (['15', 'not-a-number', ''] as $value) {
+            $this->assertNull($this->resolveFor('admission/applications/terms-and-conditions', [
+                'Origin' => 'https://shorouk.school.example.net',
+                'X-Tenant-ID' => $value,
+            ]), "X-Tenant-ID: '{$value}'");
+        }
+    }
+
+    public function testUsesTheConfiguredTenantHeaderName(): void
+    {
+        config()->set('multi-tenant.header.name', 'X-School');
+
+        $this->assertNull($this->resolveFor('admission/applications/terms-and-conditions', [
+            'Origin' => 'https://shorouk.school.example.net',
+            'X-School' => '13',
+        ]));
+        $this->assertSame(13, $this->resolveFor('admission/applications/terms-and-conditions', [
+            'Origin' => 'https://shorouk.school.example.net',
+            'X-Tenant-ID' => '13',
+        ]));
+    }
+
+    public function testSkipsRequestsWithAnyAuthorizationHeader(): void
+    {
+        foreach (['Basic dXNlcjpwYXNz', 'Bearer ', ''] as $value) {
+            $this->assertNull($this->resolveFor('admission/applications/terms-and-conditions', [
+                'Origin' => 'https://shorouk.school.example.net',
+                'Authorization' => $value,
+            ]), "Authorization: '{$value}'");
+        }
+    }
+
     public function testReturnsNullOnRoutesNotListed(): void
     {
         $this->assertNull($this->resolveFor('admission/applications/students', [

@@ -47,7 +47,7 @@ The package will auto-register its service provider and automatically publish th
 The package uses `ChainTenantResolver` by default, which tries resolvers in order:
 1. `UserSessionTenantResolver` - Gets `tenant_id` from `getSession()` helper
 2. `HeaderTenantResolver` - Gets `tenant_id` from `X-Tenant-ID` header
-3. `DomainTenantResolver` - Gets `tenant_id` from the calling school site (`Origin` / `Referer`), only on routes listed in `domain.routes`
+3. `DomainTenantResolver` - Gets `tenant_id` from the calling school site (`Origin` / `Referer`), only for requests with no token or `X-Tenant-ID`, on routes listed in `domain.routes`
 
 Configure the session helper in `config/multi-tenant.php`:
 ```php
@@ -390,8 +390,10 @@ For public pages opened from a school's site with no session and no `X-Tenant-ID
 pages, public forms…). It reads the host of the `Origin` header, then the `Referer`, and finds the
 active tenant whose `domain` column, or a domain in its `clients` JSON, matches.
 
-It runs last in the chain and is **off unless the route is listed**. `Origin` and `Referer` can be
-forged by non-browser clients, so list only public pages that show tenant-specific, non-sensitive content.
+It runs last in the chain, is **off unless the route is listed**, and **only handles anonymous requests**:
+a request with an `Authorization` header (token) or the tenant header (`X-Tenant-ID`, any value) is never
+resolved by domain. `Origin` and `Referer` can be forged by non-browser clients, so list only public pages
+that show tenant-specific, non-sensitive content.
 
 ```php
 // config/multi-tenant.php

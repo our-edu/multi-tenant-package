@@ -124,9 +124,11 @@ return [
         | Allowed Routes
         |--------------------------------------------------------------------------
         |
-        | The resolver is OFF unless the route is listed here. Origin and Referer
-        | can be forged, so list only public pages that show tenant-specific,
-        | non-sensitive content. Route names, URIs or paths; wildcards (*) allowed.
+        | The resolver is OFF unless the route is listed here, and it never runs
+        | for a request with an Authorization header (token) or the tenant header.
+        | Origin and Referer can be forged, so list only public pages that show
+        | tenant-specific, non-sensitive content. Route names, URIs or paths;
+        | wildcards (*) allowed.
         |
         | Examples:
         | - 'applications.terms-and-conditions' - exact route name

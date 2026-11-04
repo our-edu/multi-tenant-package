@@ -101,7 +101,7 @@ The package includes built-in resolvers and supports custom implementations:
 |----------|----------|---------|
 | **Header** | `HeaderTenantResolver` | `X-Tenant-ID` request header |
 | **Session** | `UserSessionTenantResolver` | `getSession()->tenant_id` |
-| **Domain** | `DomainTenantResolver` | `Origin` / `Referer` host → tenant, only on `domain.routes` |
+| **Domain** | `DomainTenantResolver` | `Origin` / `Referer` host → tenant; no token or `X-Tenant-ID`, only on `domain.routes` |
 | **Chain** | `ChainTenantResolver` | Tries session, then header, then domain |
 
 **ChainTenantResolver** - Chains multiple resolvers (default):

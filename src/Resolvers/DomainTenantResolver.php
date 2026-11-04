@@ -24,16 +24,19 @@ use Throwable;
  * API host, so it can't tell them apart.
  *
  * Origin and Referer are set by the browser and can be forged by other clients,
- * so this resolver is OFF unless the route is listed in `multi-tenant.domain.routes`.
+ * so this resolver is OFF unless the route is listed in `multi-tenant.domain.routes`,
+ * and it never runs for a request that carries a token (Authorization) or the tenant header:
+ * those must be resolved by the session or header resolver, or fail.
  * List only public pages that show tenant-specific, non-sensitive content.
  *
  * Resolution flow:
  * 1. If running in console (and not unit tests) → skip
- * 2. If the route isn't in `multi-tenant.domain.routes` → skip
- * 3. Take the host of the first configured source (origin, referer, host)
- * 4. Find the active tenant whose domain column matches, then one listing the
+ * 2. If the request has an Authorization or tenant header (any value) → skip
+ * 3. If the route isn't in `multi-tenant.domain.routes` → skip
+ * 4. Take the host of the first configured source (origin, referer, host)
+ * 5. Find the active tenant whose domain column matches, then one listing the
  *    host in its clients JSON (dashboard/website domains)
- * 5. Return the tenant ID (primary key) as integer
+ * 6. Return the tenant ID (primary key) as integer
  */
 class DomainTenantResolver implements TenantResolver
 {
@@ -49,7 +52,7 @@ class DomainTenantResolver implements TenantResolver
 
         $request = $this->getRequestFromContainer();
 
-        if (! $request || ! $this->isRouteAllowed($request)) {
+        if (! $request || $this->hasCredentials($request) || ! $this->isRouteAllowed($request)) {
             return null;
         }
 
@@ -60,6 +63,17 @@ class DomainTenantResolver implements TenantResolver
         }
 
         return $this->resolveTenantIdByHost($host);
+    }
+
+    /**
+     * Only anonymous requests may be resolved by domain: a request with a token (any
+     * Authorization header) or the tenant header, even an empty or invalid one, is left
+     * to the session and header resolvers.
+     */
+    protected function hasCredentials(Request $request): bool
+    {
+        return $request->headers->has('Authorization')
+            || $request->headers->has((string) config('multi-tenant.header.name', 'X-Tenant-ID'));
     }
 
     /**
