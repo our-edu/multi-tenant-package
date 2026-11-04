@@ -64,6 +64,7 @@ class ChainTenantResolver implements TenantResolver
         return [
             new UserSessionTenantResolver(), // Check UserSessionTenantResolver first
             new HeaderTenantResolver(),     // Then check HeaderTenantResolver
+            new DomainTenantResolver(),     // Last: public pages listed in multi-tenant.domain.routes
         ];
     }
 }

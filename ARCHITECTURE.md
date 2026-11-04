@@ -74,6 +74,7 @@ This package implements a **Shared Database, Shared Schema** pattern with **Row-
 │  │         ChainTenantResolver (Default)                   │    │
 │  │   1. UserSessionTenantResolver → getSession()->tenant_id│    │
 │  │   2. HeaderTenantResolver → X-Tenant-ID header          │    │
+│  │   3. DomainTenantResolver → Origin/Referer, listed      │    │
 │  └─────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
                                 │
@@ -100,14 +101,16 @@ The package includes built-in resolvers and supports custom implementations:
 |----------|----------|---------|
 | **Header** | `HeaderTenantResolver` | `X-Tenant-ID` request header |
 | **Session** | `UserSessionTenantResolver` | `getSession()->tenant_id` |
-| **Chain** | `ChainTenantResolver` | Tries session, then header |
+| **Domain** | `DomainTenantResolver` | `Origin` / `Referer` host → tenant, only on `domain.routes` |
+| **Chain** | `ChainTenantResolver` | Tries session, then header, then domain |
 
 **ChainTenantResolver** - Chains multiple resolvers (default):
 ```php
-// Tries UserSessionTenantResolver first, then HeaderTenantResolver
+// Tries UserSessionTenantResolver first, then HeaderTenantResolver, then DomainTenantResolver
 $resolver = new ChainTenantResolver([
     new UserSessionTenantResolver(),
     new HeaderTenantResolver(),
+    new DomainTenantResolver(),
 ]);
 ```
 
@@ -232,18 +235,21 @@ class CustomTenantResolver implements TenantResolver
 $tenantId = getSession()?->tenant_id;
 ```
 
-**DomainTenantResolver** - Gets tenant_id by querying tenant table by domain:
+**DomainTenantResolver** - Gets tenant_id for public pages from the calling school site, only on routes
+listed in `domain.routes` (Origin/Referer can be forged):
 ```php
-// Queries: SELECT id FROM tenants WHERE domain = 'school1.ouredu.com'
-$tenantId = Tenant::where('domain', $host)->value('id');
+// Host of Origin, then Referer: 'school1.ouredu.com'
+// SELECT id FROM tenants WHERE is_active AND domain = 'school1.ouredu.com'
+// then the dashboard/website domains in the tenant's clients JSON
 ```
 
 **ChainTenantResolver** - Chains multiple resolvers (default):
 ```php
-// Tries UserSessionTenantResolver first, then HeaderTenantResolver
+// Tries UserSessionTenantResolver first, then HeaderTenantResolver, then DomainTenantResolver
 $resolver = new ChainTenantResolver([
     new UserSessionTenantResolver(),
     new HeaderTenantResolver(),
+    new DomainTenantResolver(),
 ]);
 ```
 

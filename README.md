@@ -47,6 +47,7 @@ The package will auto-register its service provider and automatically publish th
 The package uses `ChainTenantResolver` by default, which tries resolvers in order:
 1. `UserSessionTenantResolver` - Gets `tenant_id` from `getSession()` helper
 2. `HeaderTenantResolver` - Gets `tenant_id` from `X-Tenant-ID` header
+3. `DomainTenantResolver` - Gets `tenant_id` from the calling school site (`Origin` / `Referer`), only on routes listed in `domain.routes`
 
 Configure the session helper in `config/multi-tenant.php`:
 ```php
@@ -135,9 +136,12 @@ return [
         // Web routes: 'health' matches /health
     ],
     
-    // Domain configuration (for DomainTenantResolver)
+    // Domain configuration (for DomainTenantResolver; off unless routes are listed)
     'domain' => [
+        'routes' => [],                       // Public routes allowed to resolve by domain
+        'sources' => ['origin', 'referer'],   // Where to read the calling site's host
         'column' => 'domain',
+        'active_column' => 'is_active',
     ],
     
     // Tables mapped to models (for migration, trait command, and query listener)
@@ -379,6 +383,28 @@ public function render($request, Throwable $e)
     return parent::render($request, $e);
 }
 ```
+
+### Domain Tenant Resolver
+
+For public pages opened from a school's site with no session and no `X-Tenant-ID` header (terms
+pages, public forms…). It reads the host of the `Origin` header, then the `Referer`, and finds the
+active tenant whose `domain` column, or a domain in its `clients` JSON, matches.
+
+It runs last in the chain and is **off unless the route is listed**. `Origin` and `Referer` can be
+forged by non-browser clients, so list only public pages that show tenant-specific, non-sensitive content.
+
+```php
+// config/multi-tenant.php
+'domain' => [
+    'routes' => [
+        'applications.terms-and-conditions',      // Route name
+        'admission/applications/terms-and-*',     // Path, with a wildcard
+    ],
+],
+```
+
+The request host isn't used by default because every school calls the same API host. Add `'host'` to
+`domain.sources` only if each tenant has its own API host.
 
 ### Header Tenant Resolver
 
