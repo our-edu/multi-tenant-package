@@ -109,6 +109,49 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Domain Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for DomainTenantResolver (last in the chain, after session
+    | and header). Resolves the tenant of public pages from the school site that
+    | sent the request (Origin, then Referer), matched against the tenant's
+    | domain column and the domains in its clients JSON.
+    |
+    */
+    'domain' => [
+        /*
+        |--------------------------------------------------------------------------
+        | Allowed Routes
+        |--------------------------------------------------------------------------
+        |
+        | The resolver is OFF unless the route is listed here, and it never runs
+        | for a request with an Authorization header (token) or the tenant header.
+        | Origin and Referer can be forged, so list only public pages that show
+        | tenant-specific, non-sensitive content. Route names, URIs or paths;
+        | wildcards (*) allowed.
+        |
+        | Examples:
+        | - 'applications.terms-and-conditions' - exact route name
+        | - 'admission/applications/terms-and-*' - path, with a wildcard
+        |
+        */
+        'routes' => [
+            // 'applications.terms-and-conditions',
+        ],
+
+        /*
+        | Where to read the calling site's host from, in order: 'origin', 'referer'
+        | and 'host' (the request host; only useful when each tenant has its own API host).
+        */
+        'sources' => ['origin', 'referer'],
+
+        // Tenant columns: the main domain, and the flag a tenant must have to match (null to skip).
+        'column' => env('MULTI_TENANT_DOMAIN_COLUMN', 'domain'),
+        'active_column' => env('MULTI_TENANT_DOMAIN_ACTIVE_COLUMN', 'is_active'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Middleware Configuration
     |--------------------------------------------------------------------------
     |

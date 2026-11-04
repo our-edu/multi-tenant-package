@@ -21,7 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `HeaderTenantResolver` - Gets tenant_id from request header for specific routes
 - `UserSessionTenantResolver` - Gets tenant_id from configurable session helper function
-- `DomainTenantResolver` - Gets tenant_id by querying tenant table by domain
+- `DomainTenantResolver` - Gets tenant_id for public pages from the calling school site (`Origin`, then
+  `Referer`), matched against the tenant's `domain` column and the domains in its `clients` JSON. Runs last in
+  `ChainTenantResolver`, only for requests with no `Authorization` or tenant header, and is off unless the route
+  is listed in the new `domain.routes` config
 - `ChainTenantResolver` - Chains multiple resolvers together (default)
 - `TenantNotResolvedException` - Thrown when no resolver returns a valid tenant ID
 - `TenantQueryListener` - Logs errors when queries run without tenant_id filter
